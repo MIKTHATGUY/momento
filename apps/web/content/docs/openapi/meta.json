@@ -1,0 +1,6 @@
+{
+  "title": "OpenAPI",
+  "description": "Interactive API reference",
+  "root": true,
+  "pages": ["index"]
+}

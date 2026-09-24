@@ -1,0 +1,9 @@
+{
+  "pages": [
+    "index",
+    "api",
+    "openapi",
+    "github-action",
+    "trust"
+  ]
+}

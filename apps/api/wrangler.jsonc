@@ -11,7 +11,7 @@
   ],
   "secrets": { "required": ["SIGNING_PRIVATE_KEY_BASE64URL"] },
   "assets": {
-    "directory": "../web/dist",
+    "directory": "../web/out",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
   }

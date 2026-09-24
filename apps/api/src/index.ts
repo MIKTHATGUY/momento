@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { describeRoute, openAPIRouteHandler, type GenerateSpecOptions } from "hono-openapi";
+import { openapi } from "./openapi";
 import { KEY_ID, PROTOCOL_VERSION, PUBLIC_KEYS, bytesToBase64url, base64urlToBytes, isSha256Hex, signingBytes, verifyReceipt, type StampPayload, type StampReceipt } from "@momento/protocol";
 
 type Bindings = {
@@ -43,10 +45,21 @@ function decodeReceiptBase64(value: string): unknown {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }
 
-app.get("/api/health", c => c.json({ ok: true }));
-app.get("/api/v1/keys", c => c.json({ algorithm: "Ed25519", keys: PUBLIC_KEYS }));
+export const openapiOptions: Partial<GenerateSpecOptions> = {
+  documentation: {
+    openapi: openapi.openapi,
+    info: openapi.info,
+    servers: openapi.servers,
+    components: openapi.components,
+  },
+  exclude: ['/api/openapi.json', '/api/*'],
+};
 
-app.post("/api/v1/stamp", async c => {
+app.get("/api/health", describeRoute(openapi.paths['/api/health'].get), c => c.json({ ok: true }));
+app.get("/api/openapi.json", openAPIRouteHandler(app, openapiOptions));
+app.get("/api/v1/keys", describeRoute(openapi.paths['/api/v1/keys'].get), c => c.json({ algorithm: "Ed25519", keys: PUBLIC_KEYS }));
+
+app.post("/api/v1/stamp", describeRoute(openapi.paths['/api/v1/stamp'].post), async c => {
   // Only Cloudflare's client-IP header is trusted. A shared fallback limits
   // requests in local development, where Cloudflare does not set the header.
   const client = c.req.header("cf-connecting-ip") ?? "unknown";
@@ -92,7 +105,7 @@ app.post("/api/v1/stamp", async c => {
   }
 });
 
-app.post("/api/v1/verify", async c => {
+app.post("/api/v1/verify", describeRoute(openapi.paths['/api/v1/verify'].post), async c => {
   const client = c.req.header("cf-connecting-ip") ?? "unknown";
   try {
     const [global, perClient] = await Promise.all([

@@ -264,7 +264,7 @@ npm run build
 npm run dev:api
 ```
 
-Open the URL printed by Wrangler, usually `http://127.0.0.1:8790`. For frontend hot reload, run `npm run dev` in a second terminal and open the Vite URL instead.
+Open the URL printed by Wrangler, usually `http://127.0.0.1:8790`. For frontend hot reload, run `npm run dev` in a second terminal and open `http://localhost:3000`. Set `NEXT_PUBLIC_API_URL=http://127.0.0.1:8790` in `apps/web/.env.local` before starting Next.js to use the local API. Without an override, the tools use the public Momento API.
 
 The repository contains Momento's **public** verification key. Signing locally requires the matching private key in `apps/api/.dev.vars` as `SIGNING_PRIVATE_KEY_BASE64URL`. That file is deliberately excluded from Git. The project owner must supply the existing secret; a fresh clone can browse and verify receipts without it, but cannot sign as Momento. `npm run keygen` works only on a fresh, unconfigured fork; it refuses to replace an established key.
 
@@ -279,7 +279,7 @@ npm run start -w @momento/cli -- verify path/to/file.pdf.momento.json path/to/fi
 
 ## Deploy to Cloudflare
 
-The site and API deploy together as one Worker with static assets. Use the existing signing key; replacing it under the same `keyId` would make old receipts unverifiable.
+The frontend uses Fumadocs and Next.js static export. `npm run build -w @momento/web` writes `apps/web/out`; no Next.js server is needed. The default deployment serves those files alongside the API on the existing Worker. Use the existing signing key; replacing it under the same `keyId` would make old receipts unverifiable.
 
 1. Authenticate Wrangler with the Cloudflare account that will host Momento: `npx wrangler login`.
 2. From `apps/api`, run `npx wrangler secret put SIGNING_PRIVATE_KEY_BASE64URL` and enter the base64url value from the owner's `apps/api/.dev.vars`, without quotes. The private key must never be committed or placed in `wrangler.jsonc`. Wrangler may create an initial Worker version when setting a secret.
@@ -290,12 +290,22 @@ The configured rate limits apply per Cloudflare location; they do not guarantee 
 
 Public keys must remain available indefinitely for old receipts. A future rotation should add a new `keyId` and key while preserving previous public keys.
 
+### Optional: host the frontend on Cloudflare Pages
+
+Use repository root as the build root, build command `npm run build -w @momento/web`, and output directory `apps/web/out`. The tools call the existing public API by default. To use another API, set `NEXT_PUBLIC_API_URL` to its origin before building; this is a public build-time setting, never a signing secret. To use same-origin API requests, set it to an empty string. Redeploy after changing it.
+
+Docs live in `apps/web/content/docs`. Navigation, code blocks, and table of contents use Fumadocs. The site uses the default Fumadocs layout, styles, and theme switcher. Search is disabled to keep the static setup minimal.
+
+The sidebar dropdown switches between Guides and the interactive OpenAPI reference at `/docs/openapi`. Hono serves the generated OpenAPI 3.1 document at `/api/openapi.json`. Route descriptions and request/response schemas live in `apps/api/src/openapi.ts` and are attached with `describeRoute`; the existing runtime validators enforce request limits and receipt rules. Keep those schemas in sync when changing validation.
+
+Web development, builds, and typechecks generate `apps/web/public/openapi.json` from the registered Hono routes, so Fumadocs uses the same schema without calling the deployed API. Run `npm run generate:openapi -w @momento/web` after changing API definitions during a running dev session. The static schema is available at `/openapi.json`.
+
 ## Project structure
 
 | Path | Purpose |
 | --- | --- |
 | `apps/api` | Hono Worker: public endpoints, rate limiting and Ed25519 signing |
-| `apps/web` | React/Vite website and developer-facing API documentation |
+| `apps/web` | Static Next.js/Fumadocs website; MDX docs in `content/docs` |
 | `packages/protocol` | Receipt schema, canonical signing bytes and offline verification |
 | `packages/cli` | Streaming file hashing and command-line stamp/verify |
 

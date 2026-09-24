@@ -1,0 +1,53 @@
+---
+title: Getting started
+description: Signed timestamps for SHA-256 hashes.
+---
+
+Momento reads its server clock and signs your file’s SHA-256 hash with Ed25519. No account or API key is required. The original file never leaves your device.
+
+## Use the tools
+
+[Open the tools](/#tools) to create, verify, or inspect a receipt. File hashing and verification happen locally in your browser. For files larger than 100 MB, use the CLI.
+
+Keep the original file and downloaded receipt. Verifying a receipt checks its signature and the file’s hash; inspecting it checks only the signature.
+
+## Calculate a hash
+
+### Windows / PowerShell
+
+```powershell
+Get-FileHash -Algorithm SHA256 "file.zip"
+```
+
+### macOS
+
+```sh
+shasum -a 256 file.zip
+```
+
+### Linux
+
+```sh
+sha256sum file.zip
+```
+
+## Integrate
+
+- [Public API](/docs/api): create timestamps and verify receipts.
+- [GitHub Action](/docs/github-action): timestamp commits and publish a badge.
+- [Trust model](/docs/trust): what signatures and server timestamps establish.
+
+## Command line
+
+From a Momento checkout, install dependencies:
+
+```npm
+npm install
+```
+
+Then run the CLI:
+
+```sh
+npm run start -w @momento/cli -- stamp path/to/file.pdf https://momento.mthatguy.workers.dev
+npm run start -w @momento/cli -- verify path/to/file.pdf.momento.json path/to/file.pdf
+```
