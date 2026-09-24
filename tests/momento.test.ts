@@ -7,7 +7,9 @@ import { KEY_ID, PUBLIC_KEYS, verifyReceipt } from "../packages/protocol/src/ind
 function limitBindings(allowClient = true, allowGlobal = true) {
   return {
     STAMP_CLIENT_LIMIT: { limit: async () => ({ success: allowClient }) },
-    STAMP_GLOBAL_LIMIT: { limit: async () => ({ success: allowGlobal }) }
+    STAMP_GLOBAL_LIMIT: { limit: async () => ({ success: allowGlobal }) },
+    VERIFY_CLIENT_LIMIT: { limit: async () => ({ success: allowClient }) },
+    VERIFY_GLOBAL_LIMIT: { limit: async () => ({ success: allowGlobal }) }
   };
 }
 
@@ -29,6 +31,56 @@ test("the Worker signs only a supplied hash with its own timestamp; verification
     assert.equal((await verifyReceipt(receipt, "b".repeat(64))).valid, false);
     receipt.payload.issuedAt = "2020-01-01T00:00:00.000Z";
     assert.equal((await verifyReceipt(receipt, hash)).valid, false);
+  } finally { PUBLIC_KEYS[KEY_ID] = previous; }
+});
+
+test("the verification API accepts receipt objects, flat fields and base64 receipts", async () => {
+  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const previous = PUBLIC_KEYS[KEY_ID];
+  PUBLIC_KEYS[KEY_ID] = publicKey.export({ format: "der", type: "spki" }).toString("base64url");
+  const env = { SIGNING_PRIVATE_KEY_BASE64URL: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url"), ...limitBindings() };
+  const hash = "a".repeat(64);
+  const post = (body: unknown, bindings = env) => app.request("/api/v1/verify", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://example.org" }, body: JSON.stringify(body) }, bindings);
+  try {
+    const stamped = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) }, env);
+    const receipt = await stamped.json() as Record<string, any>;
+    assert.equal(stamped.status, 201);
+    const encoded = Buffer.from(JSON.stringify(receipt), "utf8").toString("base64");
+    for (const body of [
+      { hash, receipt },
+      { hash, payload: receipt.payload, signature: receipt.signature },
+      { hash, receiptBase64: encoded },
+      { hash, receiptBase64: Buffer.from(JSON.stringify(receipt)).toString("base64url") }
+    ]) {
+      const response = await post(body);
+      assert.equal(response.status, 200);
+      assert.equal(response.headers.get("access-control-allow-origin"), "*");
+      assert.deepEqual(await response.json(), { valid: true, hash, issuedAt: receipt.payload.issuedAt, receiptId: receipt.payload.receiptId, keyId: KEY_ID });
+    }
+    const mismatch = await post({ hash: "b".repeat(64), receipt });
+    assert.deepEqual(await mismatch.json(), { valid: false, reason: "hash_mismatch" });
+    const tampered = await post({ hash, receipt: { ...receipt, payload: { ...receipt.payload, issuedAt: "2020-01-01T00:00:00.000Z" } } });
+    assert.deepEqual(await tampered.json(), { valid: false, reason: "invalid_signature" });
+    const malformed = await post({ hash, receipt: { payload: {}, signature: "abc" } });
+    assert.deepEqual(await malformed.json(), { valid: false, reason: "invalid_receipt" });
+    const unknownKey = await post({ hash, receipt: { ...receipt, payload: { ...receipt.payload, keyId: "unpublished-key" } } });
+    assert.deepEqual(await unknownKey.json(), { valid: false, reason: "unknown_key" });
+    const badEncoding = await post({ hash, receiptBase64: "!!!" });
+    assert.equal(badEncoding.status, 400);
+    assert.equal((await badEncoding.json() as { error: string }).error, "invalid_receipt_encoding");
+    const extra = await post({ hash, receipt, extra: true });
+    assert.equal(extra.status, 400);
+    const badHash = await post({ hash: "not-a-hash", receipt });
+    assert.equal(badHash.status, 400);
+    assert.equal((await badHash.json() as { error: string }).error, "invalid_hash");
+    const tooLarge = await post({ hash, receiptBase64: "a".repeat(9000) });
+    assert.equal(tooLarge.status, 413);
+    const denied = await post({ hash, receipt }, { ...env, VERIFY_CLIENT_LIMIT: { limit: async () => ({ success: false }) } });
+    assert.equal(denied.status, 429);
+    assert.equal(denied.headers.get("retry-after"), "60");
+    const preflight = await app.request("/api/v1/verify", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type" } });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), "*");
   } finally { PUBLIC_KEYS[KEY_ID] = previous; }
 });
 

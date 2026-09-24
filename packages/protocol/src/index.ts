@@ -73,16 +73,18 @@ export function parseReceipt(input: unknown): StampReceipt {
   return { payload: payload as unknown as StampPayload, signature: receipt.signature };
 }
 
-export async function verifyReceipt(input: unknown, expectedHash?: string): Promise<{ valid: boolean; reason?: string; receipt?: StampReceipt }> {
+export type VerificationReason = "hash_mismatch" | "unknown_key" | "invalid_signature" | "invalid_receipt";
+
+export async function verifyReceipt(input: unknown, expectedHash?: string): Promise<{ valid: boolean; reason?: string; reasonCode?: VerificationReason; receipt?: StampReceipt }> {
   try {
     const receipt = parseReceipt(input);
-    if (expectedHash !== undefined && receipt.payload.hash !== expectedHash) return { valid: false, reason: "Il file non corrisponde alla ricevuta." };
+    if (expectedHash !== undefined && receipt.payload.hash !== expectedHash) return { valid: false, reasonCode: "hash_mismatch", reason: "Il file non corrisponde alla ricevuta." };
     const encodedKey = PUBLIC_KEYS[receipt.payload.keyId];
-    if (!encodedKey || encodedKey.startsWith("REPLACE_")) return { valid: false, reason: "Chiave pubblica sconosciuta o non configurata." };
+    if (!encodedKey || encodedKey.startsWith("REPLACE_")) return { valid: false, reasonCode: "unknown_key", reason: "Chiave pubblica sconosciuta o non configurata." };
     const key = await crypto.subtle.importKey("spki", base64urlToBytes(encodedKey), "Ed25519", false, ["verify"]);
     const valid = await crypto.subtle.verify("Ed25519", key, base64urlToBytes(receipt.signature), signingBytes(receipt.payload));
-    return valid ? { valid: true, receipt } : { valid: false, reason: "Firma non valida." };
+    return valid ? { valid: true, receipt } : { valid: false, reasonCode: "invalid_signature", reason: "Firma non valida." };
   } catch {
-    return { valid: false, reason: "Ricevuta non valida." };
+    return { valid: false, reasonCode: "invalid_receipt", reason: "Ricevuta non valida." };
   }
 }

@@ -155,7 +155,21 @@ function App() {
             'const receipt = await response.json();'
           ].join("\n")}</pre></div>
         </div>
-        <div className="api-foot"><p><strong>Read endpoints</strong> <code>GET /api/v1/keys</code> returns the public Ed25519 keys; <code>GET /api/health</code> returns service status.</p><p><strong>Limits</strong> Signing is limited to 30 requests/minute per client IP and 300/minute per Cloudflare location. <code>429</code> includes <code>Retry-After: 60</code>. Invalid input returns <code>400</code>, oversized body <code>413</code>, wrong media type <code>415</code>.</p><p><strong>Verification</strong> Verify the Ed25519 signature over the versioned payload, then compare the receipt hash with your file's SHA-256. A valid signature alone does not prove the file matches. <a href="https://github.com/MIKTHATGUY/momento#api-reference">Full protocol reference ↗</a></p></div>
+        <div className="api-grid api-verify-grid">
+          <div><h3><code>POST /api/v1/verify</code></h3><p>Send the SHA-256 of the file plus its receipt. Use one of these JSON bodies:</p><pre>{'{ "hash": sha256Hex, "receipt": { "payload": { … }, "signature": "…" } }\n{ "hash": sha256Hex, "receiptBase64": "<base64 receipt JSON>" }\n{ "hash": sha256Hex, "payload": { … }, "signature": "…" }'}</pre><p><code>receiptBase64</code> accepts standard or URL-safe Base64 of the entire UTF-8 receipt JSON. The original file stays on your device.</p></div>
+          <div><h3>Example · JavaScript</h3><pre>{[
+            `const response = await fetch("${apiBase}/api/v1/verify", {`,
+            '  method: "POST",',
+            '  headers: { "Content-Type": "application/json" },',
+            '  body: JSON.stringify({ hash: sha256Hex, receipt })',
+            '});',
+            'if (!response.ok) throw new Error(String(response.status));',
+            'const result = await response.json();',
+            'if (result.valid) console.log(result.issuedAt);',
+            'else console.error(result.reason);'
+          ].join("\n")}</pre><p>A <code>200</code> response still needs <code>result.valid === true</code>. Failed checks return <code>valid: false</code> with <code>hash_mismatch</code>, <code>invalid_signature</code>, <code>unknown_key</code> or <code>invalid_receipt</code>.</p></div>
+        </div>
+        <div className="api-foot"><p><strong>Read endpoints</strong> <code>GET /api/v1/keys</code> returns the public Ed25519 keys; <code>GET /api/health</code> returns service status.</p><p><strong>Limits</strong> Signing: 30 requests/minute per client IP and 300/minute per Cloudflare location. Verification: 120/IP and 1,200/location. <code>429</code> includes <code>Retry-After: 60</code>. Invalid input returns <code>400</code>, oversized body <code>413</code>, wrong media type <code>415</code>.</p><p><strong>Verification</strong> The API checks the signature and compares the signed hash with your supplied hash. Offline verification remains available through the browser tool and CLI. <a href="https://github.com/MIKTHATGUY/momento#api-reference">Full protocol reference ↗</a></p></div>
       </section>
       <section className="hash-help" aria-label="Calculate a SHA-256 hash"><div><h2>Calculate the hash yourself</h2><p>Run a command on the original file, then compare its output with the SHA-256 shown in the receipt.</p></div><div className="hash-commands"><div><span>WINDOWS / POWERSHELL</span><code>Get-FileHash -Algorithm SHA256 "file.zip"</code></div><div><span>MACOS</span><code>shasum -a 256 file.zip</code></div><div><span>LINUX</span><code>sha256sum file.zip</code></div></div></section>
       <section className="technical-notes" aria-label="How it works"><div><h2>How it works</h2><p>Choose a file for local hashing or supply a SHA-256 hash yourself. The server receives only the hash, reads its clock and signs a receipt.</p></div><div><h2>Trust model</h2><p>The signature proves the receipt was issued by the holder of Momento's private key. The timestamp is Momento's claim about its server clock; it is not an independent time source.</p></div></section>
