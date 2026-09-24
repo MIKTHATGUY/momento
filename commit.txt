@@ -1,6 +1,6 @@
-tree 4abf88f6f5a2ec9512924b129ca05f860c03beed
-parent 83fe06c97f11df8c031e60f5410fb57c0db81de3
-author mikthatguy <mikiparentipc@gmail.com> 1790288492 +0200
-committer mikthatguy <mikiparentipc@gmail.com> 1790288492 +0200
+tree a9594f5acb2b4a2fa056cf450ee080c506e52479
+parent 7bf2e6eb1325849084fc0acbc3ba5dbd42a59942
+author mikthatguy <mikiparentipc@gmail.com> 1790288800 +0200
+committer mikthatguy <mikiparentipc@gmail.com> 1790288800 +0200
 
-Make Momento timestamp badge green
+Set explicit five-minute cache for Momento badges
