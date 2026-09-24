@@ -22,7 +22,7 @@ export async function stampCommit({ cwd = process.cwd(), outputDirectory = 'mome
   const proofPath = resolve(cwd, outputDirectory);
   mkdirSync(proofPath, { recursive: true });
   const proof = { version: 1, commit, committedAt, hash, hashFormat: 'sha256(git cat-file commit COMMIT)', receipt };
-  const badge = { schemaVersion: 1, label: 'Momento', message: receipt.payload.issuedAt.replace('T', ' ').replace('Z', ' UTC'), color: 'blue' };
+  const badge = { schemaVersion: 1, label: 'Momento', message: receipt.payload.issuedAt.replace('T', ' ').replace('Z', ' UTC'), color: 'green' };
   writeFileSync(resolve(proofPath, 'commit.txt'), body);
   writeFileSync(resolve(proofPath, 'proof.json'), JSON.stringify(proof, null, 2) + '\n');
   writeFileSync(resolve(proofPath, 'receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
