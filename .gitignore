@@ -5,4 +5,5 @@ dist/
 .env
 *.tsbuildinfo
 coverage/
+momento-proof/
 *.momento.json

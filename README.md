@@ -1,10 +1,73 @@
 # Momento
 
+[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FMIKTHATGUY%2Fmomento%2Fmomento-badges%2Fbadge.json)](https://github.com/MIKTHATGUY/momento/blob/momento-badges/proof.json)
+
 An open-source timestamp authority for SHA-256 hashes. Send a hash to Momento; its Cloudflare Worker reads its own clock and returns a signed receipt. The original file never leaves your device.
 
 The website can hash a file locally, accept a hash you already calculated, verify a receipt against a file or hash, or inspect a receipt without the original file. The same public API can be called from a browser, a backend, a CLI or an automation. No account or API key is required.
 
 > A Momento receipt is a signed claim by Momento about its server time. It proves neither when a file was created nor that the operator could not backdate a receipt. Verify the signature and the file hash before relying on one.
+
+## Add Momento to your GitHub CI/CD
+
+Use the public Action to timestamp your checked-out commit and show **Momento's signed UTC time** in your README. The Action hashes the commit, verifies the returned receipt, and automatically publishes the Shields.io badge data and proof to your repository's `momento-badges` branch.
+
+### 1. Add the Action to your workflow
+
+Add the following workflow as `.github/workflows/momento.yml`, or add its Momento step after checkout in your existing CI/CD job:
+
+```yaml
+name: Momento timestamp
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: momento-timestamp
+  cancel-in-progress: false
+jobs:
+  timestamp:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: MIKTHATGUY/momento@main
+        id: momento
+```
+
+Replace `main` with your branch name if needed. For reproducible use, pin the Action to a reviewed full commit SHA. When adding it to existing CI/CD, keep the `contents: write` permission and concurrency group, run on your chosen source branch, and exclude `momento-badges` from triggers. Place the step after your build/tests if the badge should update only after they pass.
+
+No Momento account, API key, signing secret, npm install, GitHub Pages setup, or custom publishing script is required. The Action uses GitHub's automatic token. Repository or organization rules must allow that token to create and update the dedicated `momento-badges` branch, whose files are managed by the Action. Automatic publishing supports repositories on github.com.
+
+### 2. Add the Shields.io badge to your README
+
+Replace `OWNER` and `REPO` with your public GitHub repository:
+
+```markdown
+[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOWNER%2FREPO%2Fmomento-badges%2Fbadge.json)](https://github.com/OWNER/REPO/blob/momento-badges/proof.json)
+```
+
+The Action also outputs your complete badge Markdown in the workflow run summary and as `steps.momento.outputs.badge-markdown`. The badge becomes available after the first successful run and updates automatically on subsequent successful runs. Shields.io caches responses, so updates may take a few minutes. A failed run leaves the last successfully published timestamp visible.
+
+The badge displays the verified receipt's `issuedAt`, for example `Momento | 2026-09-25 12:34:56.789 UTC`. This is when Momento issued the receipt during CI, not Git's author or committer date. Clicking the badge opens the proof and signed receipt. The badge itself is a display; verify the receipt before relying on it.
+
+### Inputs, outputs, and verification
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `publish-badge` | `true` | Publish proof and badge to your repository; set to `'false'` for local files only |
+| `github-token` | `${{ github.token }}` | Automatic workflow token; publishing needs `contents: write` |
+| `output-directory` | `momento-proof` | Local directory containing the generated proof |
+
+Outputs are `issued-at`, `commit`, `committed-at`, `hash`, and `proof-path`, plus `badge-url` and `badge-markdown` when publishing succeeds. The Action uses Node 24 and requires Git and a checkout. It timestamps `HEAD`; in a pull request job this may be a synthetic merge commit.
+
+The output directory and published branch contain `badge.json`, `proof.json`, `receipt.json`, and `commit.txt`. The latter contains the exact raw commit object body hashed with SHA-256. Only that hash is sent to Momento. The proof includes Git metadata separately from the signed receipt. The surrounding metadata is not separately signed.
+
+To independently verify the receipt, run `npm run start -w @momento/cli -- verify path/to/receipt.json path/to/commit.txt` from a Momento checkout. Compare `commit.txt` with the raw bytes returned by `git cat-file commit <commit>` in the original repository to verify the commit association.
+
+For private repositories or jobs without write permission, set `publish-badge: 'false'` and optionally preserve `momento-proof/` with `actions/upload-artifact@v4`. A public Shields.io badge requires publicly readable JSON; it cannot read a private repository's branch. See the [Shields.io endpoint specification](https://shields.io/badges/endpoint-badge) for customization.
 
 ## API reference
 
@@ -177,7 +240,7 @@ npm test
 npm run build
 ```
 
-Planned next steps: GitHub Actions and embeddable verification badges.
+The test suite includes the public Action's commit hashing and rejection of invalid timestamp receipts.
 
 ## License
 

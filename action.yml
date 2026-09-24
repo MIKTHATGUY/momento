@@ -1,0 +1,34 @@
+name: Momento timestamp
+description: Timestamp a Git commit with Momento and generate a Shields.io endpoint badge.
+author: MIKTHATGUY
+branding:
+  icon: clock
+  color: blue
+inputs:
+  publish-badge:
+    description: Publish the verified timestamp and proof to the momento-badges branch of your repository.
+    default: 'true'
+  github-token:
+    description: GitHub token with contents write permission for badge publishing.
+    default: ${{ github.token }}
+  output-directory:
+    description: Directory for the commit proof and badge JSON.
+    default: momento-proof
+outputs:
+  badge-url:
+    description: Shields.io URL for the published Momento timestamp.
+  badge-markdown:
+    description: Copy this Markdown into your README.
+  commit:
+    description: Checked-out commit ID.
+  committed-at:
+    description: Git committer time in UTC (self-reported Git metadata).
+  issued-at:
+    description: Verified Momento receipt issuance time in UTC.
+  hash:
+    description: SHA-256 of the raw Git commit object body.
+  proof-path:
+    description: Absolute path to the proof directory.
+runs:
+  using: node24
+  main: scripts/action.mjs

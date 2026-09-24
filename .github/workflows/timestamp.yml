@@ -1,0 +1,23 @@
+name: Timestamp commit
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: momento-timestamp
+  cancel-in-progress: false
+jobs:
+  timestamp:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./
+        id: stamp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: momento-${{ steps.stamp.outputs.commit }}
+          path: momento-proof/
+          if-no-files-found: error
