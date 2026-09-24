@@ -1,6 +1,6 @@
-tree a9594f5acb2b4a2fa056cf450ee080c506e52479
-parent 7bf2e6eb1325849084fc0acbc3ba5dbd42a59942
-author mikthatguy <mikiparentipc@gmail.com> 1790288800 +0200
-committer mikthatguy <mikiparentipc@gmail.com> 1790288800 +0200
+tree 4a607fe132a6fb8b7f6468e87ca113090c3fcaef
+parent 128ee91d4ad9e59c2415f46fb432e71ca3372981
+author mikthatguy <mikiparentipc@gmail.com> 1790289687 +0200
+committer mikthatguy <mikiparentipc@gmail.com> 1790289687 +0200
 
-Set explicit five-minute cache for Momento badges
+Clarify timestamp trust and accuracy
