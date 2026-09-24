@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "momento",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-24",
+  "ratelimits": [
+    { "name": "STAMP_CLIENT_LIMIT", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
+    { "name": "STAMP_GLOBAL_LIMIT", "namespace_id": "1002", "simple": { "limit": 300, "period": 60 } }
+  ],
+  "secrets": { "required": ["SIGNING_PRIVATE_KEY_BASE64URL"] },
+  "assets": {
+    "directory": "../web/dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  }
+}

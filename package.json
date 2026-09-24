@@ -1,0 +1,20 @@
+{
+  "name": "momento",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev -w @momento/web",
+    "dev:api": "npm run dev -w @momento/api",
+    "build": "npm run build -w @momento/web && npm run build -w @momento/api",
+    "typecheck": "npm run typecheck -w @momento/protocol && npm run typecheck -w @momento/api && npm run typecheck -w @momento/web && npm run typecheck -w @momento/cli",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "keygen": "node scripts/keygen.mjs",
+    "deploy": "npm run build && npm run deploy -w @momento/api"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
