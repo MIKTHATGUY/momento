@@ -1,6 +1,6 @@
 # Momento
 
-[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FMIKTHATGUY%2Fmomento%2Fmomento-badges%2Fbadge.json)](https://github.com/MIKTHATGUY/momento/blob/momento-badges/proof.json)
+[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FMIKTHATGUY%2Fmomento%2Fmomento-badges%2Fbadge.json&cacheSeconds=300)](https://github.com/MIKTHATGUY/momento/blob/momento-badges/proof.json)
 
 An open-source timestamp authority for SHA-256 hashes. Send a hash to Momento; its Cloudflare Worker reads its own clock and returns a signed receipt. The original file never leaves your device.
 
@@ -46,12 +46,18 @@ No Momento account, API key, signing secret, npm install, GitHub Pages setup, or
 Replace `OWNER` and `REPO` with your public GitHub repository:
 
 ```markdown
-[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOWNER%2FREPO%2Fmomento-badges%2Fbadge.json)](https://github.com/OWNER/REPO/blob/momento-badges/proof.json)
+[![Momento timestamp](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FOWNER%2FREPO%2Fmomento-badges%2Fbadge.json&cacheSeconds=300)](https://github.com/OWNER/REPO/blob/momento-badges/proof.json)
 ```
 
-The Action also outputs your complete badge Markdown in the workflow run summary and as `steps.momento.outputs.badge-markdown`. The badge becomes available after the first successful run and updates automatically on subsequent successful runs. Shields.io caches responses, so updates may take a few minutes. A failed run leaves the last successfully published timestamp visible.
+The Action also outputs your complete badge Markdown in the workflow run summary and as `steps.momento.outputs.badge-markdown`. The badge becomes available after the first successful run and updates automatically on subsequent successful runs. Badge URLs and endpoint JSON explicitly request a 300-second (five-minute) cache, the current minimum for Shields.io endpoint badges. GitHub raw-content caching and its Camo image proxy can add delay, so this is not a guaranteed refresh deadline. A failed run leaves the last successfully published timestamp visible.
 
 The badge displays the verified receipt's `issuedAt`, for example `Momento | 2026-09-25 12:34:56.789 UTC`. This is when Momento issued the receipt during CI, not Git's author or committer date. Clicking the badge opens the proof and signed receipt. The badge itself is a display; verify the receipt before relying on it.
+
+### Badge freshness
+
+Use `&cacheSeconds=300` on the Shields.io URL, as shown above. The [Shields.io endpoint implementation](https://github.com/badges/shields/blob/master/services/endpoint/endpoint.service.js) enforces a minimum of 300 seconds; `cacheSeconds=1` cannot force instant refreshes. `maxAge` is not the documented cache control for this badge type.
+
+A browser hard refresh does not purge GitHub's server-side image cache. If a badge remains stale after the caches expire, follow [GitHub's Camo troubleshooting instructions](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-anonymized-urls). GitHub recommends using a Camo purge sparingly. Changing the README image URL with a one-time `&v=2` gives GitHub a new image URL, but does not guarantee fresh upstream JSON. Automatically rewriting the README on every run would add commits and complicate which commit is being timestamped; the Action keeps a stable badge URL instead.
 
 ### Inputs, outputs, and verification
 

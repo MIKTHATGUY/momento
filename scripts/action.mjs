@@ -22,7 +22,7 @@ export async function stampCommit({ cwd = process.cwd(), outputDirectory = 'mome
   const proofPath = resolve(cwd, outputDirectory);
   mkdirSync(proofPath, { recursive: true });
   const proof = { version: 1, commit, committedAt, hash, hashFormat: 'sha256(git cat-file commit COMMIT)', receipt };
-  const badge = { schemaVersion: 1, label: 'Momento', message: receipt.payload.issuedAt.replace('T', ' ').replace('Z', ' UTC'), color: 'green' };
+  const badge = { schemaVersion: 1, label: 'Momento', message: receipt.payload.issuedAt.replace('T', ' ').replace('Z', ' UTC'), color: 'green', cacheSeconds: 300 };
   writeFileSync(resolve(proofPath, 'commit.txt'), body);
   writeFileSync(resolve(proofPath, 'proof.json'), JSON.stringify(proof, null, 2) + '\n');
   writeFileSync(resolve(proofPath, 'receipt.json'), JSON.stringify(receipt, null, 2) + '\n');
@@ -62,7 +62,7 @@ export async function publishBadge({ proofPath, repository, token, fetchImpl = f
   if (previous) await request(`refs/heads/${branch}`, 'PATCH', { sha: commit.sha, force: false });
   else await request('refs', 'POST', { ref: `refs/heads/${branch}`, sha: commit.sha });
   const endpoint = `https://raw.githubusercontent.com/${repository}/${branch}/badge.json`;
-  const badgeUrl = `https://img.shields.io/endpoint?url=${encodeURIComponent(endpoint)}`;
+  const badgeUrl = `https://img.shields.io/endpoint?url=${encodeURIComponent(endpoint)}&cacheSeconds=300`;
   return {
     'badge-url': badgeUrl,
     'badge-markdown': `[![Momento timestamp](${badgeUrl})](https://github.com/${repository}/blob/${branch}/proof.json)`
