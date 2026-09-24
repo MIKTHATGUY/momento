@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "commit": "83fe06c97f11df8c031e60f5410fb57c0db81de3",
+  "committedAt": "2026-09-24T22:20:16.000Z",
+  "hash": "dd2e1c1ec4f1cda9a850a0df47ca2a20b6a94ba43ea4492abaec7d0330a32d0e",
+  "hashFormat": "sha256(git cat-file commit COMMIT)",
+  "receipt": {
+    "payload": {
+      "version": 1,
+      "hash": "dd2e1c1ec4f1cda9a850a0df47ca2a20b6a94ba43ea4492abaec7d0330a32d0e",
+      "issuedAt": "2026-09-24T22:20:32.383Z",
+      "receiptId": "uGt0St46GwcUqIj97qQtpA",
+      "keyId": "momento-v1"
+    },
+    "signature": "QPKx8C8Hf_G7gq2pKZtrGCYVTgKX2NAkrSoqrtGX7po7DXZveQLmpIWBDyxJ0i1UnzE5jqt4CXf6-3O6PbltCQ"
+  }
+}

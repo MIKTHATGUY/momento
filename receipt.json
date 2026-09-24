@@ -1,0 +1,10 @@
+{
+  "payload": {
+    "version": 1,
+    "hash": "dd2e1c1ec4f1cda9a850a0df47ca2a20b6a94ba43ea4492abaec7d0330a32d0e",
+    "issuedAt": "2026-09-24T22:20:32.383Z",
+    "receiptId": "uGt0St46GwcUqIj97qQtpA",
+    "keyId": "momento-v1"
+  },
+  "signature": "QPKx8C8Hf_G7gq2pKZtrGCYVTgKX2NAkrSoqrtGX7po7DXZveQLmpIWBDyxJ0i1UnzE5jqt4CXf6-3O6PbltCQ"
+}
