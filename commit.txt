@@ -1,6 +1,6 @@
-tree 4a607fe132a6fb8b7f6468e87ca113090c3fcaef
-parent 128ee91d4ad9e59c2415f46fb432e71ca3372981
-author mikthatguy <mikiparentipc@gmail.com> 1790289687 +0200
-committer mikthatguy <mikiparentipc@gmail.com> 1790289687 +0200
+tree 5234a2b7c43e538454bd726a670bb0abc51e077d
+parent 54a598f693dc87ea61fdd41a621441f2632089d5
+author mikthatguy <mikiparentipc@gmail.com> 1790293701 +0200
+committer mikthatguy <mikiparentipc@gmail.com> 1790293701 +0200
 
-Clarify timestamp trust and accuracy
+Add Fumadocs site and interactive OpenAPI reference
