@@ -1,10 +1,10 @@
 {
   "payload": {
     "version": 1,
-    "hash": "4b82eb1723db1ea211bb60204a45920ae5baefabacf31c3c686346e2b1763420",
-    "issuedAt": "2026-09-24T23:48:31.825Z",
-    "receiptId": "Pm9rsZGT3jBhCCAHYZqBaw",
+    "hash": "781730d72c35caf2d6b2d20874c0115c2933143efbe340fc20ccf423ed23acbb",
+    "issuedAt": "2026-09-25T18:19:02.834Z",
+    "receiptId": "ZVQX8oo6fHhB9QBfX9KwVg",
     "keyId": "momento-v1"
   },
-  "signature": "cYPnbaNVQQM5ssZ25DhjEnVd5F31984YnZw6IssRWkeTRoIMnFNnWbQG4AP0ydI6cXBnKR2uzkwdUwjQ_NzaAg"
+  "signature": "s0gAc3qbZ53b4FpPbmTBX4XC51AES68QKhS8W6jBI-DhpgN_B0jSpXq2xjoJyHp0iZZ60vEqXF1_BLYsRT6CBw"
 }

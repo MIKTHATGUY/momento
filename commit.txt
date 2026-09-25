@@ -1,6 +1,6 @@
-tree 5234a2b7c43e538454bd726a670bb0abc51e077d
-parent 54a598f693dc87ea61fdd41a621441f2632089d5
-author mikthatguy <mikiparentipc@gmail.com> 1790293701 +0200
-committer mikthatguy <mikiparentipc@gmail.com> 1790293701 +0200
+tree bbc45d683a10f2c9003ec4c8a96d13a8ebc8fe93
+parent 8b4f6c1579eab218c6fb4916e6f8827b42c5ca08
+author mikthatguy <mikiparentipc@gmail.com> 1790360332 +0200
+committer mikthatguy <mikiparentipc@gmail.com> 1790360332 +0200
 
-Add Fumadocs site and interactive OpenAPI reference
+Reframe README around composable timestamping
