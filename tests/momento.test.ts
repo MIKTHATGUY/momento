@@ -14,10 +14,11 @@ function limitBindings(allowClient = true, allowGlobal = true) {
 }
 
 test("the Worker signs only a supplied hash with its own timestamp; verification is offline", async () => {
-  const { secretKey: privateKey, publicKey } = ml_dsa65.keygen();
+  const seed = crypto.getRandomValues(new Uint8Array(32));
+  const { publicKey } = ml_dsa65.keygen(seed);
   const previous = PUBLIC_KEYS[KEY_ID];
   PUBLIC_KEYS[KEY_ID] = Buffer.from(publicKey).toString("base64url");
-  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(seed).toString("base64url"), ...limitBindings() };
   const hash = "a".repeat(64);
   try {
     const before = Date.now();
@@ -35,10 +36,11 @@ test("the Worker signs only a supplied hash with its own timestamp; verification
 });
 
 test("the verification API accepts receipt objects, flat fields and base64 receipts", async () => {
-  const { secretKey: privateKey, publicKey } = ml_dsa65.keygen();
+  const seed = crypto.getRandomValues(new Uint8Array(32));
+  const { publicKey } = ml_dsa65.keygen(seed);
   const previous = PUBLIC_KEYS[KEY_ID];
   PUBLIC_KEYS[KEY_ID] = Buffer.from(publicKey).toString("base64url");
-  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(seed).toString("base64url"), ...limitBindings() };
   const hash = "a".repeat(64);
   const post = (body: unknown, bindings = env) => app.request("/api/v2/verify", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://example.org" }, body: JSON.stringify(body) }, bindings);
   try {
@@ -94,11 +96,21 @@ test("the API rejects a client-supplied time and malformed hashes", async () => 
 });
 
 test("the Worker refuses to issue receipts when its secret does not match the published key", async () => {
-  const { secretKey: privateKey } = ml_dsa65.keygen();
-  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
+  const seed = crypto.getRandomValues(new Uint8Array(32));
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(seed).toString("base64url"), ...limitBindings() };
   const response = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, env);
   assert.equal(response.status, 503);
   assert.equal((await response.json() as { error: string }).error, "signing_key_mismatch");
+});
+
+test("the Worker rejects an expanded private key that cannot fit a Worker secret", async () => {
+  const { secretKey } = ml_dsa65.keygen();
+  const expanded = Buffer.from(secretKey).toString("base64url");
+  assert.ok(expanded.length > 5000, "expanded key must exceed the secret size limit");
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: expanded, ...limitBindings() };
+  const response = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, env);
+  assert.equal(response.status, 503);
+  assert.equal((await response.json() as { error: string }).error, "signing_not_configured");
 });
 
 test("the public API allows browser clients and rejects abusive signing traffic", async () => {

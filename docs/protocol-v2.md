@@ -30,7 +30,7 @@ JSON.stringify([
 ]);
 ```
 
-Use pure ML-DSA-65, with an empty FIPS 204 context. Do not use HashML-DSA or the internal external-mu API. Production signing uses fresh hedged randomness from the system CSPRNG. Public keys are raw 1952-byte values and private keys are expanded raw 4032-byte values, encoded as canonical unpadded Base64url. Never include private keys in receipts.
+Use pure ML-DSA-65, with an empty FIPS 204 context. Do not use HashML-DSA or the internal external-mu API. Production signing uses fresh hedged randomness from the system CSPRNG. Public keys are raw 1952-byte values, encoded as canonical unpadded Base64url. The stored private form is the 32-byte FIPS 204 seed, encoded the same way; signing expands it in memory to the 4032-byte private key, which never leaves the signer and exceeds hosted secret size limits. Never include private keys or seeds in receipts.
 
 ## Verification and trust
 

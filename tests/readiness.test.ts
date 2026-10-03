@@ -5,10 +5,11 @@ import app from '../apps/api/src/index.ts';
 import { KEY_ID, KEY_METADATA, PUBLIC_KEYS, publicKeyFingerprint } from '@mikthatguy/momento-protocol';
 
 test('readiness validates signing keys and bindings, while health remains liveness only', async () => {
-  const pair = ml_dsa65.keygen();
+  const seed = crypto.getRandomValues(new Uint8Array(32));
+  const pair = ml_dsa65.keygen(seed);
   const original = PUBLIC_KEYS[KEY_ID];
   const limiter = { limit: async () => { throw new Error('Readiness must not consume quota'); } };
-  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(pair.secretKey).toString("base64url"), STAMP_CLIENT_LIMIT: limiter, STAMP_GLOBAL_LIMIT: limiter, VERIFY_CLIENT_LIMIT: limiter, VERIFY_GLOBAL_LIMIT: limiter };
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(seed).toString("base64url"), STAMP_CLIENT_LIMIT: limiter, STAMP_GLOBAL_LIMIT: limiter, VERIFY_CLIENT_LIMIT: limiter, VERIFY_GLOBAL_LIMIT: limiter };
   try {
     PUBLIC_KEYS[KEY_ID] = Buffer.from(pair.publicKey).toString("base64url");
     const ready = await app.request('/api/ready', {}, env);
@@ -19,8 +20,8 @@ test('readiness validates signing keys and bindings, while health remains livene
     assert.match(ready.headers.get('x-request-id')!, /^[0-9a-f-]{36}$/);
     assert.equal((await app.request('/api/ready', {}, { ...env, ML_DSA65_PRIVATE_KEY_BASE64URL: '' })).status, 503);
     assert.equal((await app.request('/api/ready', {}, { ...env, ML_DSA65_PRIVATE_KEY_BASE64URL: 'bad' })).status, 503);
-    const mismatched = ml_dsa65.keygen();
-    assert.equal((await app.request('/api/ready', {}, { ...env, ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(mismatched.secretKey).toString("base64url") })).status, 503);
+    const mismatched = crypto.getRandomValues(new Uint8Array(32));
+    assert.equal((await app.request('/api/ready', {}, { ...env, ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(mismatched).toString("base64url") })).status, 503);
     assert.equal((await app.request('/api/ready', {}, { ...env, STAMP_CLIENT_LIMIT: undefined })).status, 503);
     assert.equal((await app.request('/api/health', {}, {})).status, 200);
     KEY_METADATA[KEY_ID].status = 'compromised';

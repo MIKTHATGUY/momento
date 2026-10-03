@@ -32,13 +32,28 @@ app.use("/api/*", async (c, next) => {
 });
 app.use("/api/*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"], allowHeaders: ["Content-Type"], exposeHeaders: ["X-Request-ID", "Retry-After"] }));
 
+// The Worker secret holds the 32-byte ML-DSA-65 seed as canonical unpadded
+// Base64url (43 characters). The 4032-byte expanded private key is derived in
+// memory at signing time: it does not fit Cloudflare's secret size limit, so
+// expanded values are rejected. Anything else fails closed as unconfigured.
+const ML_DSA65_SEED_BYTES = 32;
+let expandedKey: { seedValue: string; secretKey: Uint8Array } | undefined;
+function signingKey(seedValue: string): Uint8Array {
+  if (expandedKey?.seedValue !== seedValue) {
+    const seed = base64urlToBytes(seedValue);
+    if (seed.byteLength !== ML_DSA65_SEED_BYTES) throw new Error("invalid_seed");
+    expandedKey = { seedValue, secretKey: ml_dsa65.keygen(seed).secretKey };
+  }
+  return expandedKey.secretKey;
+}
+
 // Cache a self-test briefly per isolate, including in-flight checks. Never publish key material.
 let readiness: { privateValue: string; publicValue: string; expiresAt: number; result: Promise<boolean> } | undefined;
 async function signingReady(privateValue: string, publicValue: string): Promise<boolean> {
   if (!readiness || readiness.privateValue !== privateValue || readiness.publicValue !== publicValue || readiness.expiresAt <= Date.now()) {
     const result = (async () => {
       try {
-        const privateKey = base64urlToBytes(privateValue);
+        const privateKey = signingKey(privateValue);
         const publicKey = base64urlToBytes(publicValue);
         const challenge = new TextEncoder().encode("Momento readiness self-test v2 / ML-DSA-65");
         const signature = ml_dsa65.sign(challenge, privateKey);
@@ -151,8 +166,10 @@ app.post("/api/v2/stamp", describeRoute(openapi.paths['/api/v2/stamp'].post), as
   const privateKeyRaw = c.env.ML_DSA65_PRIVATE_KEY_BASE64URL;
   if (!privateKeyRaw || !PUBLIC_KEYS[KEY_ID] || PUBLIC_KEYS[KEY_ID].startsWith("REPLACE_") || KEY_METADATA[KEY_ID]?.status !== "active") return c.json({ error: "signing_not_configured" }, 503);
 
+  let privateKey: Uint8Array;
+  try { privateKey = signingKey(privateKeyRaw); }
+  catch { return c.json({ error: "signing_not_configured" }, 503); }
   try {
-    const privateKey = base64urlToBytes(privateKeyRaw);
     const payload: StampPayload = {
       version: PROTOCOL_VERSION,
       hash: (body as { hash: string }).hash,

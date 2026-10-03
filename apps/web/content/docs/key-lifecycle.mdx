@@ -25,7 +25,7 @@ stateDiagram-v2
 
 ## Routine v2 rotation
 
-1. Generate a new ML-DSA-65 pair securely. Keep the expanded raw private key in protected secret storage, with a tested encrypted backup; do not place it in Git.
+1. Generate a new ML-DSA-65 pair securely. Keep the 32-byte seed in protected secret storage, with a tested encrypted backup; do not place it in Git. The Worker secret holds the seed as canonical unpadded Base64url (43 characters) and derives the 4032-byte expanded private key in memory at signing time — the expanded form exceeds Cloudflare's secret size limit and must never be stored as the secret.
 2. Add the new raw public key under a new unique ID in `PUBLIC_KEYS`, with `KEY_METADATA` marked `active` and the actual creation time if known. Mark the previous key `retired` and retain its public key indefinitely.
 3. Publish the updated verifier package and Action before changing the service's signing key, so clients can obtain the new authentic key. Update the website and retained offline verification copies too.
 4. Stage the Worker secret and matching `KEY_ID` together during a controlled release. A mismatch fails closed. Check `/api/ready`, issue a test receipt, and verify it offline with the released package before declaring the rotation complete.
