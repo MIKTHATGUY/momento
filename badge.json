@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "label": "Momento",
-  "message": "2026-09-25 18:19:02.834 UTC",
-  "color": "green",
+  "message": "0/9 confirmed",
+  "color": "orange",
   "cacheSeconds": 300
 }

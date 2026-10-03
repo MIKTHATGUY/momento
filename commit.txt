@@ -1,6 +1,0 @@
-tree bbc45d683a10f2c9003ec4c8a96d13a8ebc8fe93
-parent 8b4f6c1579eab218c6fb4916e6f8827b42c5ca08
-author mikthatguy <mikiparentipc@gmail.com> 1790360332 +0200
-committer mikthatguy <mikiparentipc@gmail.com> 1790360332 +0200
-
-Reframe README around composable timestamping
