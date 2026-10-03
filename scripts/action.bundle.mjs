@@ -1404,7 +1404,7 @@ async function verifyReceipt(input, expectedHash) {
 // packages/cli/src/git.ts
 import { execFileSync } from "node:child_process";
 import { createHash, randomBytes as randomBytes3 } from "node:crypto";
-var PROOFS_REF = "refs/heads/momento-proofs";
+var PROOFS_REF = "refs/momento/proofs";
 var gitEnvironment = () => ({ ...process.env, GIT_NO_REPLACE_OBJECTS: "1" });
 var digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 var receiptDigest = (receipt) => digest(JSON.stringify([

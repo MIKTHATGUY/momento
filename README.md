@@ -56,7 +56,7 @@ steps:
 
 The GitHub Action hashes the checked-out commit, requests and verifies a receipt, and can publish proof and a Shields.io badge. This is one workflow; build yours around the same API. For permissions, badge setup, private repositories, and a complete workflow, see the [GitHub Action guide](https://momento.mthatguy.workers.dev/docs/github-action). Pin the Action to a reviewed commit SHA for reproducible use.
 
-Alternatively, install the CLI's Git hooks with `momento-timestamp git init` (after package publication; use the compiled checkout CLI beforehand). They attest commits locally and keep receipts in `momento-proofs`. Set the Action's `mode: verify-history` with a full checkout to verify every reachable commit and publish `128/128 confirmed`. For existing history, set `start-commit` to the explicit activation SHA; its badge says `since activation`. The Action issues no new receipts in this mode, and Momento adds no server-side receipt storage. See [Git setup and limitations](apps/web/content/docs/git.mdx).
+Alternatively, install the CLI's Git hooks with `momento-timestamp git init` (after package publication; use the compiled checkout CLI beforehand). They attest commits locally and keep receipts in `refs/momento/proofs`. Set the Action's `mode: verify-history` with a full checkout to verify every reachable commit and publish `128/128 confirmed`. For existing history, set `start-commit` to the explicit activation SHA; its badge says `since activation`. The Action issues no new receipts in this mode, and Momento adds no server-side receipt storage. See [Git setup and limitations](apps/web/content/docs/git.mdx).
 
 Other possibilities:
 

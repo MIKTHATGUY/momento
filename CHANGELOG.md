@@ -4,7 +4,7 @@
 
 ### Git attestations
 
-- Added local Git hooks for parent-receipt links, commit attestations and proof publication, plus offline history verification and safe proof synchronization. Receipts stay in the user's `momento-proofs` branch; no server-side archive is added.
+- Added local Git hooks for parent-receipt links, commit attestations and proof publication, plus offline history verification and safe proof synchronization. Receipts stay in the repository's hidden `refs/momento/proofs` ref — not a branch, so GitHub shows no recent-push banners; no server-side archive is added.
 - Added Action `verify-history` mode and a coverage badge with negative-result publication, complete-history checks and explicit activation scope for existing repositories. Included a standalone bundled Action entry point and Git integration documentation.
 
 ### Breaking security migration

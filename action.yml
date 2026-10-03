@@ -12,8 +12,8 @@ inputs:
     description: Commit or ref to verify in verify-history mode.
     default: 'HEAD'
   proofs-ref:
-    description: Remote branch containing local-hook receipts.
-    default: 'refs/heads/momento-proofs'
+    description: Hidden ref containing local-hook receipts (not a branch).
+    default: 'refs/momento/proofs'
   start-commit:
     description: Explicit activation commit for existing repositories; empty checks the entire history.
     default: ''

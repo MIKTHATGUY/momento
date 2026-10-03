@@ -3,7 +3,7 @@ title: Git checks and attestations
 description: Hooks that attest each commit, plus local checks (git verify) and the pre-push gate before publishing proofs.
 ---
 
-Momento can attest commits as you create them. Local Git hooks link each new commit to its parents' signed receipts, then timestamp the SHA-256 of the exact commit body. Receipts live in your repository's separate `momento-proofs` branch. The Momento signing endpoint receives only hashes; this integration adds no server-side receipt archive.
+Momento can attest commits as you create them. Local Git hooks link each new commit to its parents' signed receipts, then timestamp the SHA-256 of the exact commit body. Receipts live in your repository's separate `refs/momento/proofs` ref. It is not a branch, so GitHub neither lists it nor shows "recent pushes" banners for it. The Momento signing endpoint receives only hashes; this integration adds no server-side receipt archive.
 
 <Callout type="info" title="Checks first: how you prove history is intact">
 - `git verify` — offline check of every commit in scope: signatures, exact commit hashes, all parent receipt links, and non-decreasing receipt times.
@@ -16,7 +16,7 @@ flowchart LR
   A[Commit A] --> RA[Receipt for commit A bytes]
   RA --> B[Commit B embeds the parent receipt link]
   B --> RB[Receipt for commit B bytes]
-  RB --> Proofs[Stored on momento-proofs branch]
+  RB --> Proofs[Stored in refs/momento/proofs]
 ```
 
 ## Install the hooks
@@ -45,9 +45,9 @@ git commit -m "Add login"
 git push origin main
 ```
 
-The `prepare-commit-msg` hook appends one `Momento-Parent-Receipt: COMMIT sha256:DIGEST` line per parent. A root commit instead contains a `Momento-Anchor-Receipt` line. The digest is SHA-256 of the canonical JSON tuple `[version, hash, issuedAt, receiptId, keyId, signature]`, so cosmetic receipt JSON formatting does not alter the link. The `post-commit` hook requests and verifies the new receipt, stores it under `COMMIT.json`, and updates `refs/heads/momento-proofs` without changing the working tree or index. Existing receipts cannot be overwritten.
+The `prepare-commit-msg` hook appends one `Momento-Parent-Receipt: COMMIT sha256:DIGEST` line per parent. A root commit instead contains a `Momento-Anchor-Receipt` line. The digest is SHA-256 of the canonical JSON tuple `[version, hash, issuedAt, receiptId, keyId, signature]`, so cosmetic receipt JSON formatting does not alter the link. The `post-commit` hook requests and verifies the new receipt, stores it under `COMMIT.json`, and updates `refs/momento/proofs` without changing the working tree or index. Existing receipts cannot be overwritten.
 
-The `pre-push` hook checks the actual pushed tips, then publishes `momento-proofs` to the same remote before the normal code push. Proof and source updates are separate pushes: a failed source push can leave extra proofs, which do not count unless their commits are reachable from the verified target. Concurrent contributors can run `momento-timestamp git sync [remote]` before working or after a rejected proof push. It fetches and merges the receipt trees without changing the working tree; signatures are verified and conflicting receipts for the same commit are rejected. Non-fast-forward proof pushes are rejected, never forced. Proof and badge maintenance branches are excluded from commit coverage.
+The `pre-push` hook checks the actual pushed tips, then publishes the proofs ref (`refs/momento/proofs`) to the same remote before the normal code push. Proof and source updates are separate pushes: a failed source push can leave extra proofs, which do not count unless their commits are reachable from the verified target. Concurrent contributors can run `momento-timestamp git sync [remote]` before working or after a rejected proof push. It fetches and merges the receipt trees without changing the working tree; signatures are verified and conflicting receipts for the same commit are rejected. Non-fast-forward proof pushes are rejected, never forced. The proofs ref and badge maintenance branch are excluded from commit coverage.
 
 You must have receipts for parents before creating linked children. If signing fails, Git has already created the commit: it remains unconfirmed. Retry from that repository:
 

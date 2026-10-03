@@ -49,7 +49,7 @@ jobs:
 
 For a repository attested from the root, leave `MOMENTO_START_COMMIT` unset. For existing history, set that repository Actions variable to the full activation SHA printed by `git init`. The published badge explicitly says `since activation`; the verifier never trusts a start boundary selected by untrusted receipt files. Review changes to the variable and workflow policy.
 
-The Action fetches `refs/heads/momento-proofs` from origin and checks every reachable commit in scope, including merged side branches, signed receipt/commit matches, all parent links and receipt time ordering. It does not need a Bun install: the Node 24 entry point includes its verification dependencies. Development changes must regenerate the committed entry point with `bun run build:action`.
+The Action fetches `refs/momento/proofs` from origin and checks every reachable commit in scope, including merged side branches, signed receipt/commit matches, all parent links and receipt time ordering. It does not need a Bun install: the Node 24 entry point includes its verification dependencies. Development changes must regenerate the committed entry point with `bun run build:action`.
 
 The local pre-push hook publishes proofs before the source push, so the source workflow can fetch them. A proof-only push does not contain this workflow and does not automatically rerun it: after repairing receipts for an existing source HEAD, use **Run workflow**. Exclude `momento-badges` from triggers to avoid publication loops.
 
@@ -110,7 +110,7 @@ A browser hard refresh does not purge GitHub's server-side image cache. If a bad
 | --- | --- | --- |
 | `mode` | `stamp` | `stamp` issues a receipt for HEAD; `verify-history` checks local-hook proofs |
 | `target-ref` | `HEAD` | Target commit/ref for history verification |
-| `proofs-ref` | `refs/heads/momento-proofs` | Dedicated proof branch fetched from origin (fixed in this version) |
+| `proofs-ref` | `refs/momento/proofs` | Dedicated proofs ref fetched from origin (fixed in this version) |
 | `start-commit` | empty | Explicit activation boundary; empty checks the entire history |
 | `publish-badge` | `true` | Publish proof and badge to your repository; set to `'false'` for local files only |
 | `github-token` | `${{ github.token }}` | Automatic workflow token; publishing needs `contents: write` |

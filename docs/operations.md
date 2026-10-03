@@ -34,6 +34,6 @@ Two temporary, explicitly unpublished test releases are defined in apps/api/src/
 
 ## Git history coverage
 
-Contributors install the CLI hooks and keep source history and `momento-proofs` in backups. Run `git sync` through the CLI before working across clones. The repository workflow uses `verify-history`; an existing repository must set the reviewed full activation SHA in the `MOMENTO_START_COMMIT` Actions variable. Leave it unset only for a history attested from the root. Treat changes to this variable, workflow and verifier as policy changes.
+Contributors install the CLI hooks and keep source history and the `refs/momento/proofs` ref in backups. Run `git sync` through the CLI before working across clones. The repository workflow uses `verify-history`; an existing repository must set the reviewed full activation SHA in the `MOMENTO_START_COMMIT` Actions variable. Leave it unset only for a history attested from the root. Treat changes to this variable, workflow and verifier as policy changes.
 
 Verification failures publish a negative badge before the job fails. A receipt-only repair needs a manual workflow run; checkout, network or publication failures can leave an older badge visible. Check `proof.json` for its HEAD, scope and check time rather than relying on the cached image. See the [Git guide](../apps/web/content/docs/git.mdx) and [Action guide](../apps/web/content/docs/github-action.mdx).

@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSy
 import { resolve, dirname } from 'node:path';
 import { verifyReceipt, readReceiptResponse, parseReceipt, MAX_RECEIPT_BYTES, type StampReceipt } from '@mikthatguy/momento-protocol';
 
-export const PROOFS_REF = 'refs/heads/momento-proofs';
+export const PROOFS_REF = 'refs/momento/proofs';
 const DEFAULT_API = 'https://momento.mthatguy.workers.dev';
 const gitEnvironment = () => ({ ...process.env, GIT_NO_REPLACE_OBJECTS: '1' });
 const digest = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex');
