@@ -2,23 +2,23 @@
   "pages": [
     "---Start here---",
     "index",
-    "---Integrations---",
+    "trust",
+    "---Timestamp files---",
     "api",
+    "openapi",
     "rate-limits",
+    "---Attest Git commits---",
     "git",
     "github-action",
-    "---Protocol and trust---",
+    "---Protocol and guarantees---",
     "protocol",
-    "trust",
-    "key-lifecycle",
-    "threat-model",
     "architecture",
-    "---Project---",
-    "changelog",
+    "threat-model",
+    "key-lifecycle",
+    "---Run and contribute---",
+    "operations",
     "security",
     "contributing",
-    "---Maintainer guides---",
-    "operations",
-    "openapi"
+    "changelog"
   ]
 }

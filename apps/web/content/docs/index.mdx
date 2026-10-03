@@ -43,8 +43,8 @@ sha256sum file.zip
 ## Integrate
 
 - [Public API](/docs/api): create timestamps and verify receipts.
-- [Git integration](/docs/git): attest local commits and preserve a chain of signed receipts.
-- [GitHub Action](/docs/github-action): verify commit coverage or timestamp a checked-out commit, and publish a badge.
+- [Git checks and attestations](/docs/git): attest each commit with local hooks, then check the chain with `git verify` and the pre-push gate.
+- [GitHub checks and badges](/docs/github-action): re-check attested history in CI (`verify-history`) and publish the coverage badge.
 - [Trust model](/docs/trust): what signatures and server timestamps establish.
 
 ## Command line

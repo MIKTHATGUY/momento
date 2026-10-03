@@ -1,9 +1,13 @@
 ---
-title: GitHub Action
-description: Verify attested commit history or timestamp a commit, and publish its proof badge.
+title: GitHub checks and badges
+description: CI check that verifies attested history (verify-history) or timestamps a commit (stamp), then publishes its proof badge.
 ---
 
 Use `verify-history` with the local Git hooks to publish confirmed commit coverage, or the default `stamp` mode to timestamp your checked-out commit and show **Momento's signed UTC time**. Both modes can publish the Shields.io badge data and proof to your repository's `momento-badges` branch.
+
+<Callout type="info" title="Recommended: check, don't just stamp">
+Pair this Action with the [local Git hooks](/docs/git): contributors attest each commit locally, then `verify-history` checks every commit in scope offline — signatures, byte hashes, receipt links, and time ordering — before publishing the badge. Use `stamp` only for repositories without local attestation.
+</Callout>
 
 ```mermaid
 flowchart TD
@@ -14,7 +18,7 @@ flowchart TD
   V --> Publish
 ```
 
-## Verify every locally attested commit
+## Check history in CI (verify-history)
 
 Install the [local Git integration](/docs/git) on contributors' computers first. Set `mode: verify-history` to replace CI timestamping with offline verification of existing receipts. This mode never calls Momento to issue receipts or fill gaps.
 

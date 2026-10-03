@@ -1,9 +1,15 @@
 ---
-title: Git commit attestations
-description: Attest commits locally, verify their receipt chain, and publish a coverage badge without server-side storage.
+title: Git checks and attestations
+description: Hooks that attest each commit, plus local checks (git verify) and the pre-push gate before publishing proofs.
 ---
 
 Momento can attest commits as you create them. Local Git hooks link each new commit to its parents' signed receipts, then timestamp the SHA-256 of the exact commit body. Receipts live in your repository's separate `momento-proofs` branch. The Momento signing endpoint receives only hashes; this integration adds no server-side receipt archive.
+
+<Callout type="info" title="Checks first: how you prove history is intact">
+- `git verify` — offline check of every commit in scope: signatures, exact commit hashes, all parent receipt links, and non-decreasing receipt times.
+- Pre-push gate — the `pre-push` hook blocks the push when local commits are unconfirmed or proofs are missing.
+- CI `verify-history` — the [GitHub Action](/docs/github-action) re-runs the same offline check in CI and publishes the coverage badge.
+</Callout>
 
 ```mermaid
 flowchart LR
@@ -64,7 +70,7 @@ git config momento.startCommit ORIGINAL_ACTIVATION_SHA
 
 For a repository attested from its root, initialization detects the complete valid chain and keeps entire-history mode. The root's signed anchor is already in the fetched proofs; new commits use their parent receipts. If local configuration contains an unwanted activation boundary, clear it with `git config --unset momento.startCommit`.
 
-## Verify offline
+## Check history: verify offline
 
 ```sh
 bun /absolute/path/to/momento/packages/cli/dist/index.js git verify
@@ -75,7 +81,7 @@ Verification requires full Git history, the proof branch and authentic verificat
 
 A normal `git commit` and regular non-fast-forward merge are supported, including octopus merges with more than two parents (one `Momento-Parent-Receipt` line per parent from `MERGE_HEAD`). Fast-forward merges reuse existing commits. Amend, rebase, cherry-pick and squash can change parents or create commits through other Git paths; this version does not automatically re-attest their rewritten chains. They can produce unconfirmed commits, which verification and the push gate reject. Bypassing or modifying hooks cannot make an invalid chain pass an independent verifier.
 
-## Coverage badge
+## Check in CI: coverage badge
 
 Use the Action's `verify-history` mode described in [GitHub Action](/docs/github-action). It verifies existing proofs instead of issuing receipts in CI. Green means every commit in the reported scope passes verification. An explicit activation boundary produces a badge marked `since activation`; without one, the entire history must pass, including the root anchor.
 
