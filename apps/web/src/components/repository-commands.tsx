@@ -20,7 +20,7 @@ export default function RepositoryCommands() {
     ? 'bun install --global @mikthatguy/momento-timestamp@2.0.0\n'
     : 'git clone https://github.com/MIKTHATGUY/momento.git momento-cli-source\ncd momento-cli-source\nbun install --frozen-lockfile\nbun run build:packages\ncd ..\n';
   const cli = installation === 'registry' ? 'momento-timestamp' : 'bun ../momento-cli-source/packages/cli/dist/index.js';
-  const commands = valid ? `${setup}\ngit clone '${url}' momento-repo-check\ncd momento-repo-check\n${cli} git sync origin\n${cli} git verify${boundary ? ` --start-commit ${boundary}` : ''}` : '';
+  const commands = valid ? `${setup}\ngit clone "${url}" momento-repo-check\ncd momento-repo-check\n${cli} git sync origin\n${cli} git verify${boundary ? ` --start-commit ${boundary}` : ''}` : '';
   return <div className="flex flex-col gap-4">
     <label className="flex flex-col gap-2">Repository URL<input className="rounded-lg border bg-transparent p-3" value={repository} onChange={e => { setRepository(e.target.value); setCopied(false); }} placeholder="https://github.com/owner/repository or owner/repository" /></label>
     <label className="flex flex-col gap-2">Activation commit (optional)<input className="rounded-lg border bg-transparent p-3" value={start} onChange={e => { setStart(e.target.value); setCopied(false); }} placeholder="Full SHA agreed by the repository maintainers" /></label>

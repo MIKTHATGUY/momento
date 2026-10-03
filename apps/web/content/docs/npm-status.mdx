@@ -27,6 +27,8 @@ curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/stamp \
   --data '{"hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}'
 ```
 
+On Windows Command Prompt, single quotes are not unwrapped: use double quotes around `--data` and escape the inner quotes. PowerShell and Bash run the command as shown.
+
 **CLI from a checkout.** Clone the repository and run the compiled CLI instead of `bunx`. Requires Bun 1.3.13+ and Node.js 22.18+:
 
 ```sh

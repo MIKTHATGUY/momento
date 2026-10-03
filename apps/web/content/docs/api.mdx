@@ -69,6 +69,8 @@ curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/stamp \
 
 This saves the response to `receipt.json` for the verification example below.
 
+On Windows Command Prompt, single quotes are not unwrapped: use double quotes around `--data` and escape the inner quotes (`--data "{\"hash\":\"…\"}"`). PowerShell and Bash run the command as shown.
+
 </Tab>
 <Tab value="JavaScript">
 
