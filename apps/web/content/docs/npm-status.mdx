@@ -1,0 +1,45 @@
+---
+title: npm packages status (temporary)
+description: Why the npm packages are not published yet and how to use Momento meanwhile.
+---
+
+<Callout title="Temporary notice" type="warn">
+This page and the site banner exist only until the npm packages are published, then both are removed.
+</Callout>
+
+## What happened
+
+The v2 packages — `@mikthatguy/momento-protocol` and `@mikthatguy/momento-timestamp` — are built and validated but **not on npm yet**. The maintainer lost the npm account's two-factor authentication (no authenticator, no recovery codes), so publishing is blocked until npm support completes an account recovery. Recovery is in progress; there is no action for you to take on that front.
+
+This means `bunx @mikthatguy/momento-timestamp …` does **not** work yet. Everything else does: the production v2 API is live, the web tools work, and the GitHub Action and CLI run from this repository.
+
+## Use Momento without npm
+
+**Web tools.** [Stamp, verify, and inspect receipts](/docs/api) directly in the browser. File hashing and verification happen locally; only the SHA-256 digest is sent to the API.
+
+**API.** Call the live endpoints as documented in the [API reference](/docs/api):
+
+```sh
+curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/stamp \
+  -H 'Content-Type: application/json' \
+  --data '{"hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}'
+```
+
+**CLI from a checkout.** Clone the repository and run the compiled CLI instead of `bunx`. Requires Bun 1.3.13+ and Node.js 22.18+:
+
+```sh
+git clone https://github.com/MIKTHATGUY/momento.git
+cd momento
+bun install --frozen-lockfile
+bun run build:packages
+bun packages/cli/dist/index.js stamp path/to/file.pdf
+bun packages/cli/dist/index.js verify path/to/file.pdf.momento.json path/to/file.pdf
+```
+
+Verification runs offline. To stamp against another instance, pass its base URL after the file path or set `MOMENTO_API_URL`. The same checkout CLI installs the [Git hooks](/docs/git) (`git init`) and powers the [GitHub Action](/docs/github-action) when referenced by commit SHA.
+
+**Rate limits** apply as usual while you do this — see [rate limits](/docs/rate-limits). If you hit `429`, wait out the `Retry-After: 60` interval.
+
+## What happens next
+
+Once the npm account is recovered, the maintainer will publish the protocol package first and the CLI second, verify `bunx @mikthatguy/momento-timestamp@2.0.0` from outside the repository, and then delete this page and the banner. The checkout commands above keep working unchanged.

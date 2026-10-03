@@ -15,6 +15,12 @@ export default function Layout({ children }: { children: ReactNode }) {
               Momento is now post-quantum — v2 receipts use ML-DSA-65. Learn more →
             </Link>
           </Banner>
+          {/* TEMPORARY: remove with the npm-status docs page once npm packages are published. */}
+          <Banner id="momento-npm-pending">
+            <Link href="/docs/npm-status" className="text-center text-sm underline-offset-4 hover:underline">
+              npm packages delayed — account recovery in progress. How to use Momento meanwhile →
+            </Link>
+          </Banner>
           {children}
         </RootProvider>
       </body>
