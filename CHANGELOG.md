@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — preparing 2.0.0
+## 2.0.0 — 2026-10-03
 
 ### Git attestations
 
@@ -24,4 +24,4 @@
 - CI validation, package artifacts, dependency updates, and CodeQL workflow.
 - Updated compatible dependencies and patched the documentation library's Undici dependency.
 
-The npm packages, GitHub release, and `v2` Action tag are not published by these local changes.
+The GitHub release and signed `v2.0.0` and `v2` Action tags are published. npm availability remains delayed pending account recovery; downloadable package archives are attached to the GitHub release.

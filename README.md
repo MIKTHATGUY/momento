@@ -51,7 +51,7 @@ The response is a signed JSON receipt. See the [API reference](https://momento.m
 ```yaml
 steps:
   - uses: actions/checkout@v7
-  - uses: MIKTHATGUY/momento@main
+  - uses: MIKTHATGUY/momento@v2
 ```
 
 The GitHub Action hashes the checked-out commit, requests and verifies a receipt, and can publish proof and a Shields.io badge. This is one workflow; build yours around the same API. For permissions, badge setup, private repositories, and a complete workflow, see the [GitHub Action guide](https://momento.mthatguy.workers.dev/docs/github-action). Pin the Action to a reviewed commit SHA for reproducible use.

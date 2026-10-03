@@ -41,7 +41,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-      - uses: MIKTHATGUY/momento@main # Pin the release containing this mode to a reviewed SHA.
+      - uses: MIKTHATGUY/momento@v2 # Pin to a reviewed commit SHA for security-sensitive workflows.
         with:
           mode: verify-history
           start-commit: ${{ vars.MOMENTO_START_COMMIT }}
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: MIKTHATGUY/momento@main
+      - uses: MIKTHATGUY/momento@v2
         id: momento
 ```
 
