@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "head": "24ad46d043df2d8c344ad6494ca1c3adc0abdf1f",
+  "head": "69dadf963b9727177f728f8d469c369b31c2fa75",
   "startCommit": null,
   "scope": "entire-history",
-  "checkedAt": "2026-10-03T02:20:06.620Z",
-  "total": 9,
+  "checkedAt": "2026-10-03T02:40:17.316Z",
+  "total": 10,
   "confirmed": 0,
   "valid": false,
   "commits": [
@@ -52,6 +52,11 @@
       "commit": "24ad46d043df2d8c344ad6494ca1c3adc0abdf1f",
       "valid": false,
       "reason": "Missing receipt for 24ad46d043df2d8c344ad6494ca1c3adc0abdf1f"
+    },
+    {
+      "commit": "69dadf963b9727177f728f8d469c369b31c2fa75",
+      "valid": false,
+      "reason": "Missing receipt for 69dadf963b9727177f728f8d469c369b31c2fa75"
     }
   ]
 }
