@@ -1,62 +1,17 @@
 {
   "version": 1,
   "head": "69dadf963b9727177f728f8d469c369b31c2fa75",
-  "startCommit": null,
-  "scope": "entire-history",
-  "checkedAt": "2026-10-03T02:40:17.316Z",
-  "total": 10,
-  "confirmed": 0,
-  "valid": false,
+  "startCommit": "69dadf963b9727177f728f8d469c369b31c2fa75",
+  "scope": "since-activation",
+  "checkedAt": "2026-10-03T02:44:44.190Z",
+  "total": 1,
+  "confirmed": 1,
+  "valid": true,
   "commits": [
     {
-      "commit": "1dc8e179243d761dfc8e7d723ab8368ba365177a",
-      "valid": false,
-      "reason": "Missing receipt for 1dc8e179243d761dfc8e7d723ab8368ba365177a"
-    },
-    {
-      "commit": "cb7b40e1eb3edfa249997c6f3accd92ff206bbe1",
-      "valid": false,
-      "reason": "Missing receipt for cb7b40e1eb3edfa249997c6f3accd92ff206bbe1"
-    },
-    {
-      "commit": "83fe06c97f11df8c031e60f5410fb57c0db81de3",
-      "valid": false,
-      "reason": "Missing receipt for 83fe06c97f11df8c031e60f5410fb57c0db81de3"
-    },
-    {
-      "commit": "7bf2e6eb1325849084fc0acbc3ba5dbd42a59942",
-      "valid": false,
-      "reason": "Missing receipt for 7bf2e6eb1325849084fc0acbc3ba5dbd42a59942"
-    },
-    {
-      "commit": "128ee91d4ad9e59c2415f46fb432e71ca3372981",
-      "valid": false,
-      "reason": "Missing receipt for 128ee91d4ad9e59c2415f46fb432e71ca3372981"
-    },
-    {
-      "commit": "54a598f693dc87ea61fdd41a621441f2632089d5",
-      "valid": false,
-      "reason": "Missing receipt for 54a598f693dc87ea61fdd41a621441f2632089d5"
-    },
-    {
-      "commit": "8b4f6c1579eab218c6fb4916e6f8827b42c5ca08",
-      "valid": false,
-      "reason": "Missing receipt for 8b4f6c1579eab218c6fb4916e6f8827b42c5ca08"
-    },
-    {
-      "commit": "26c6274c07e11a5152d3f4f5901e775a7450c457",
-      "valid": false,
-      "reason": "Missing receipt for 26c6274c07e11a5152d3f4f5901e775a7450c457"
-    },
-    {
-      "commit": "24ad46d043df2d8c344ad6494ca1c3adc0abdf1f",
-      "valid": false,
-      "reason": "Missing receipt for 24ad46d043df2d8c344ad6494ca1c3adc0abdf1f"
-    },
-    {
       "commit": "69dadf963b9727177f728f8d469c369b31c2fa75",
-      "valid": false,
-      "reason": "Missing receipt for 69dadf963b9727177f728f8d469c369b31c2fa75"
+      "valid": true,
+      "issuedAt": "2026-10-03T02:43:58.781Z"
     }
   ]
 }
