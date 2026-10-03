@@ -1,8 +1,48 @@
 {
-  "name": "@momento/cli",
-  "version": "0.1.0",
-  "private": true,
+  "version": "2.0.0",
   "type": "module",
-  "scripts": {"start": "tsx src/index.ts", "typecheck": "tsc -p tsconfig.json"},
-  "dependencies": {"@momento/protocol": "0.1.0"}
+  "license": "MIT",
+  "author": "MIKTHATGUY",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MIKTHATGUY/momento.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://momento.mthatguy.workers.dev/docs",
+  "bugs": {
+    "url": "https://github.com/MIKTHATGUY/momento/issues"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "name": "@mikthatguy/momento-timestamp",
+  "description": "Timestamp files and verify Momento receipts offline.",
+  "bin": {
+    "momento-timestamp": "./dist/index.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@mikthatguy/momento-protocol": "2.0.0"
+  },
+  "keywords": [
+    "timestamp",
+    "sha256",
+    "ml-dsa",
+    "post-quantum",
+    "cli",
+    "git"
+  ]
 }

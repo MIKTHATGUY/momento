@@ -1,8 +1,52 @@
 {
-  "name": "@momento/protocol",
-  "version": "0.1.0",
-  "private": true,
+  "version": "2.0.0",
   "type": "module",
-  "exports": {".": "./src/index.ts"},
-  "scripts": {"typecheck": "tsc -p tsconfig.json"}
+  "license": "MIT",
+  "author": "MIKTHATGUY",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MIKTHATGUY/momento.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://momento.mthatguy.workers.dev/docs",
+  "bugs": {
+    "url": "https://github.com/MIKTHATGUY/momento/issues"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "name": "@mikthatguy/momento-protocol",
+  "description": "Portable post-quantum ML-DSA-65 receipt verification for Momento Timestamp.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@noble/post-quantum": "0.7.0"
+  },
+  "keywords": [
+    "timestamp",
+    "sha256",
+    "ml-dsa",
+    "post-quantum",
+    "cryptography",
+    "verification"
+  ]
 }

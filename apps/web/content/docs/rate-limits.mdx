@@ -1,0 +1,46 @@
+---
+title: Rate limits
+description: Abuse controls on the stamp and verify endpoints, and how to stay within them.
+---
+
+Stamping and verification are shared public resources with no account or API key. Rate limits keep one client from crowding out the rest. They are abuse controls, not guaranteed quotas or an SLA.
+
+## Current limits
+
+| Endpoint | Per client IP | Per Cloudflare location | Window |
+| --- | --- | --- | --- |
+| `POST /api/v2/stamp` | 30 requests | 300 requests | 60 seconds |
+| `POST /api/v2/verify` | 120 requests | 1,200 requests | 60 seconds |
+
+These values are configured in `apps/api/wrangler.jsonc` and enforced by Cloudflare rate limiting. The `GET` endpoints (`/api/health`, `/api/ready`, `/api/v2/keys`, `/api/releases`, `/api/openapi.json`) are not application rate-limited.
+
+## How requests are counted
+
+- The per-client bucket is keyed by the client IP Cloudflare reports (`cf-connecting-ip`). People sharing an IP address — for example behind the same NAT, VPN, or CI runner — share that budget.
+- The per-location bucket covers all stamp (or verify) traffic seen at one Cloudflare location. Counters are local to each location and eventually consistent, so they are approximate: a distributed burst can briefly exceed the nominal totals, and there is no global request budget.
+- In local development Cloudflare does not set the client-IP header, so all local requests share a single fallback bucket.
+- The hosting plan also has a daily request ceiling independent of these per-minute limits.
+
+## When a limit is hit
+
+Exceeding either bucket returns:
+
+```json title="429 Too Many Requests"
+{ "error": "rate_limited" }
+```
+
+The response includes `Retry-After: 60` and `Cache-Control: no-store`. Wait the full interval before retrying; immediate retries extend the wait and can look like abusive traffic to monitors, which alert on unusually high 429 counts (see [Operations](/docs/operations)).
+
+If the service itself cannot check its limits, it fails closed with `503 rate_limit_unavailable` instead of issuing an unchecked receipt. Treat that as "try again later", not as a receipt.
+
+## Staying within the limits
+
+1. **Verify offline.** A saved receipt can be checked with the [public key and the offline verifier](/docs/api#verify-offline) without calling the API at all. Reserve `/api/v2/verify` for cases where you need the server's answer.
+2. **Cache receipts.** A stamp receipt never changes; store it beside the file and re-verify the same bytes locally instead of re-requesting.
+3. **Back off on 429.** Honor `Retry-After: 60` with a single retry timer rather than concurrent retries.
+4. **Batch deliberately.** Each stamp call creates one receipt. If you timestamp many files (for example in CI), space requests out and stay an order of magnitude below the per-minute ceilings so shared-location traffic does not push you over.
+5. **Watch shared IPs.** If your builds run on shared runners, assume the per-client budget is shared and keep individual jobs well under 30 stamps/minute.
+
+## What limits do not change
+
+Rate limiting does not affect what a receipt proves. A receipt obtained within the limits carries the same [trust properties](/docs/trust) as any other; a request refused with 429 produces no receipt at all, so there is nothing to misinterpret. Limits also do not substitute for the request-body bounds (1,024 bytes for stamp, 8,192 bytes for verify) documented in the [API reference](/docs/api#errors).

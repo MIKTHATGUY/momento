@@ -8,6 +8,17 @@ import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
 
 Momento signs a file’s SHA-256 hash and returns a timestamp receipt. Keep that receipt with your file so you can check it later. Your file stays on your device; only its hash is sent to Momento.
 
+```mermaid
+flowchart TD
+  A[Hash the file locally] --> B[POST /api/v2/stamp with the hash]
+  B --> C[Save the signed receipt]
+  C --> D[Hash the file again later]
+  D --> E[POST /api/v2/verify or verify offline]
+  E --> F{valid is true}
+  F -->|yes| G[Trust the timestamp]
+  F -->|no| H[Reject and see the reason]
+```
+
 ## Before you start
 
 Use the [interactive OpenAPI reference](/docs/openapi) to explore request schemas and try endpoints, or [download the schema](/openapi.json) for your API client.
@@ -20,15 +31,16 @@ No API key is required. Requests and responses use JSON. For POST requests, set 
 
 | Method | Endpoint | What it does |
 | --- | --- | --- |
-| `POST` | [`/api/v1/stamp`](#create-a-timestamp) | Create a signed receipt for a hash |
-| `POST` | [`/api/v1/verify`](#verify-a-receipt) | Check a receipt against a hash |
-| `GET` | [`/api/v1/keys`](#get-public-keys) | Get the public signing keys |
+| `POST` | [`/api/v2/stamp`](#create-a-timestamp) | Create a signed receipt for a hash |
+| `POST` | [`/api/v2/verify`](#verify-a-receipt) | Check a receipt against a hash |
+| `GET` | [`/api/v2/keys`](#get-public-keys) | Get the public signing keys |
 | `GET` | [`/api/health`](#check-service-health) | Check whether the API responds |
+| `GET` | [`/api/ready`](#check-signing-readiness) | Check signing configuration and key self-test |
 
 ## Create a timestamp
 
 ```http
-POST /api/v1/stamp
+POST /api/v2/stamp
 ```
 
 Compute your file’s SHA-256 hash locally, then send it to this endpoint. Momento adds the current server time and signs the receipt.
@@ -49,7 +61,7 @@ These examples timestamp the SHA-256 hash of an empty file. Replace it with your
 <Tab value="cURL">
 
 ```sh
-curl --fail-with-body https://momento.mthatguy.workers.dev/api/v1/stamp \
+curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/stamp \
   -H 'Content-Type: application/json' \
   --data '{"hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}' \
   --output receipt.json
@@ -62,7 +74,7 @@ This saves the response to `receipt.json` for the verification example below.
 
 ```js
 const hash = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-const response = await fetch('https://momento.mthatguy.workers.dev/api/v1/stamp', {
+const response = await fetch('https://momento.mthatguy.workers.dev/api/v2/stamp', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ hash }),
@@ -84,31 +96,31 @@ console.log(receipt);
 ```json title="201 Created"
 {
   "payload": {
-    "version": 1,
+    "version": 2,
     "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "issuedAt": "2026-09-24T12:34:56.789Z",
     "receiptId": "<base64url-encoded 16 random bytes>",
-    "keyId": "momento-v1"
+    "keyId": "momento-v2-ml-dsa65"
   },
-  "signature": "<base64url-encoded Ed25519 signature>"
+  "signature": "<base64url-encoded ML-DSA-65 signature>"
 }
 ```
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `payload.version` | `number` | Receipt format version. Currently `1`. |
+| `payload.version` | `number` | Receipt format version. Currently `2`. |
 | `payload.hash` | `string` | The SHA-256 hash you submitted. |
 | `payload.issuedAt` | `string` | Server time in UTC, in ISO 8601 format. |
 | `payload.receiptId` | `string` | Random ID. Repeated requests for the same hash create separate receipts. |
 | `payload.keyId` | `string` | Identifies the public key to use for verification. |
-| `signature` | `string` | Ed25519 signature, encoded as base64url. |
+| `signature` | `string` | ML-DSA-65 signature, encoded as base64url. |
 
 The response uses `Cache-Control: no-store`.
 
 ## Verify a receipt
 
 ```http
-POST /api/v1/verify
+POST /api/v2/verify
 ```
 
 Hash the file you want to check, then send that hash with its saved receipt. Momento checks the signature and confirms that the receipt belongs to the hash you supplied.
@@ -132,7 +144,7 @@ Use the `receipt.json` saved above. This example uses `jq` to build the request 
 ```sh
 jq --arg hash 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' \
   '{hash: $hash, receipt: .}' receipt.json |
-  curl --fail-with-body https://momento.mthatguy.workers.dev/api/v1/verify \
+  curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/verify \
     -H 'Content-Type: application/json' \
     --data-binary @-
 ```
@@ -145,7 +157,7 @@ Replace the example hash with a fresh hash of the file you are checking.
 Use `hash` and `receipt` from the stamp example. When checking a file later, compute its hash again and load the saved receipt.
 
 ```js
-const verificationResponse = await fetch('https://momento.mthatguy.workers.dev/api/v1/verify', {
+const verificationResponse = await fetch('https://momento.mthatguy.workers.dev/api/v2/verify', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ hash, receipt }),
@@ -199,7 +211,7 @@ Do not combine these formats or add extra fields. The hash must always be suppli
   "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "issuedAt": "2026-09-24T12:34:56.789Z",
   "receiptId": "<receipt ID>",
-  "keyId": "momento-v1"
+  "keyId": "momento-v2-ml-dsa65"
 }
 ```
 
@@ -234,25 +246,25 @@ Both successful and failed verification return HTTP `200`. Only accept the recei
 ## Get public keys
 
 ```http
-GET /api/v1/keys
+GET /api/v2/keys
 ```
 
 Fetch the public keys used to verify receipts. Match the receipt’s `payload.keyId` to an entry in `keys`.
 
 ```sh
-curl --fail-with-body https://momento.mthatguy.workers.dev/api/v1/keys
+curl --fail-with-body https://momento.mthatguy.workers.dev/api/v2/keys
 ```
 
 ```json title="200 OK"
 {
-  "algorithm": "Ed25519",
+  "algorithm": "ML-DSA-65",
   "keys": {
-    "momento-v1": "<base64url-encoded SPKI DER public key>"
+    "momento-v2-ml-dsa65": "<base64url-encoded raw ML-DSA-65 public key>"
   }
 }
 ```
 
-The key shown above is a placeholder. Use the actual key returned by the endpoint, or a trusted copy you saved earlier for [offline verification](#verify-offline).
+The key shown above is a placeholder. Use the actual key returned by the endpoint, or a trusted copy you saved earlier for [offline verification](#verify-offline). The response also includes `metadata` indexed by key ID: status (`active`, `retired`, or `compromised`), `createdAt` (or `null` when unknown), a lowercase SHA-256 `fingerprint` of raw ML-DSA-65 key bytes, and `fingerprintAlgorithm: sha256-ml-dsa65-raw`. All older Ed25519 keys must be discarded; v1 receipts are rejected. Future ML-DSA-65 rotation can retain uncompromised v2 verification keys. See [Protocol v2](/docs/protocol).
 
 ## Check service health
 
@@ -270,9 +282,20 @@ curl --fail-with-body https://momento.mthatguy.workers.dev/api/health
 { "ok": true }
 ```
 
+## Check signing readiness
+
+```http
+GET /api/ready
+```
+
+Returns `200` with `{ "ready": true }` when the signing and verification keys pass an ML-DSA-65 self-test and the rate-limit bindings are configured. Otherwise returns `503` with `{ "ready": false }`. Self-tests are cached up to 30 seconds per Worker isolate. This check does not consume request quota, test the rate-limit backend, or certify the server clock. Responses use `Cache-Control: no-store`.
+
+The [status page](/status) performs this live check. It does not report historical uptime.
+
 ## Errors
 
 Request errors use an `error` field. They are separate from a receipt that [fails verification](#verify-a-receipt).
+API responses include a generated `X-Request-ID` for support. Application request logs omit submitted hashes, request bodies, client IPs, and query strings.
 
 ```json title="400 Bad Request"
 { "error": "invalid_hash" }
@@ -296,12 +319,12 @@ Request errors use an `error` field. They are separate from a receipt that [fail
 
 | Endpoint | Per client IP | Per Cloudflare location |
 | --- | --- | --- |
-| `POST /api/v1/stamp` | 30 requests/minute | 300 requests/minute |
-| `POST /api/v1/verify` | 120 requests/minute | 1,200 requests/minute |
+| `POST /api/v2/stamp` | 30 requests/minute | 300 requests/minute |
+| `POST /api/v2/verify` | 120 requests/minute | 1,200 requests/minute |
 
 If you receive `429`, wait for the `Retry-After` interval before trying again. People sharing an IP address share the per-client limit. The application does not rate-limit the two GET endpoints.
 
-These are abuse controls, not guaranteed quotas: Cloudflare’s counters are local to each location and eventually consistent. The hosting plan also has a daily request ceiling.
+These are abuse controls, not guaranteed quotas: Cloudflare’s counters are local to each location and eventually consistent. The hosting plan also has a daily request ceiling. See the [rate limits guide](/docs/rate-limits) for counting rules, retry behavior, and how to stay within them.
 
 ## Verify offline
 
@@ -309,12 +332,12 @@ You can verify a saved receipt without calling this API. Use a trusted copy of t
 
 1. Validate the receipt’s structure and version.
 2. Select the public key identified by `payload.keyId`.
-3. Decode the base64url signature and verify it with Ed25519 over the UTF-8 bytes of the array below.
+3. Decode the base64url signature and verify it with ML-DSA-65 over the UTF-8 bytes of the array below.
 4. Compute SHA-256 over the file’s raw bytes and compare its lowercase hexadecimal digest with `payload.hash`.
 
 ```js title="Signed message"
 JSON.stringify([
-  'Momento timestamp receipt v1',
+  'Momento timestamp receipt v2 / ML-DSA-65',
   payload.version,
   payload.hash,
   payload.issuedAt,

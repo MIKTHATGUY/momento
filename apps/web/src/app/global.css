@@ -4,6 +4,18 @@
 @import 'fumadocs-openapi/css/preset.css';
 @source '../../../../node_modules/fumadocs-ui/dist/**/*.js';
 :root { --momento-accent: #5d671f; }
+.proof-summary { margin-top: 2rem; font-size: .8rem; color: var(--color-fd-muted-foreground); display: grid; gap: .5rem; }
+.landing-footer > div { flex-wrap: wrap; }
+.utility-page { max-width: 850px; padding-block: 3rem; }
+.utility-page h1 { font-size: 2.5rem; margin-bottom: 1rem; }
+.utility-page > p { margin-bottom: 1.5rem; }
+.utility-form { margin-block: 1.5rem; gap: 1rem; }
+.utility-form label { display: grid; gap: .5rem; font-size: .875rem; }
+.utility-form input { min-width: 0; width: 100%; padding: .75rem; border: 1px solid var(--color-fd-border); border-radius: .5rem; }
+.utility-form dd { overflow-wrap: anywhere; font-family: monospace; margin-bottom: .75rem; }
+.utility-form button { width: fit-content; cursor: pointer; }
+.utility-form button:disabled { opacity: .5; cursor: not-allowed; }
+.utility-form input:focus-visible, .utility-form button:focus-visible { outline: 2px solid var(--momento-accent); outline-offset: 3px; }
 .dark { --color-fd-background: #111210; --color-fd-card: #191a17; --color-fd-muted: #20211d; --color-fd-primary: #eee1a0; --color-fd-primary-foreground: #202619; --momento-accent: #eee1a0; }
 html { scroll-behavior: smooth; scroll-padding-top: 6rem; }
 body { font-family: 'Geist', 'Segoe UI', sans-serif; }

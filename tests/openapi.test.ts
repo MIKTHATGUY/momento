@@ -14,11 +14,11 @@ test('OpenAPI endpoint exposes the registered public routes with CORS and resolv
   assert.deepEqual(spec, JSON.parse(JSON.stringify(await generateSpecs(app, openapiOptions))));
   assert.equal(spec.openapi, '3.1.0');
   assert.deepEqual(Object.keys(spec.paths).sort(), [
-    '/api/health', '/api/v1/keys', '/api/v1/stamp', '/api/v1/verify',
+    '/api/health', '/api/ready', '/api/v2/keys', '/api/v2/stamp', '/api/v2/verify',
   ]);
-  assert.ok(spec.paths['/api/v1/stamp'].post.responses['201']);
-  assert.equal(spec.paths['/api/v1/verify'].post.requestBody.content['application/json'].schema.oneOf.length, 3);
-  assert.equal(spec.paths['/api/v1/verify'].post.responses['200'].content['application/json'].schema.oneOf.length, 2);
+  assert.ok(spec.paths['/api/v2/stamp'].post.responses['201']);
+  assert.equal(spec.paths['/api/v2/verify'].post.requestBody.content['application/json'].schema.oneOf.length, 3);
+  assert.equal(spec.paths['/api/v2/verify'].post.responses['200'].content['application/json'].schema.oneOf.length, 2);
 
   function checkReferences(value: unknown): void {
     if (!value || typeof value !== 'object') return;

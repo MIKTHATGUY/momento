@@ -2,11 +2,17 @@
 
 import React, { useRef, useState } from "react";
 import styles from './timestamp-tools.module.css';
-import { verifyReceipt, type StampReceipt } from "@momento/protocol";
+import RepositoryCommands from './repository-commands';
+import { verifyReceipt, decodeReceiptText, readReceiptResponse, encodeReceiptFragment, MAX_RECEIPT_BYTES, type StampReceipt, type VerificationReason } from "@mikthatguy/momento-protocol";
 
 
 const MAX_BROWSER_FILE_SIZE = 100 * 1024 * 1024;
 const SHA256_RE = /^[0-9a-f]{64}$/;
+
+async function readReceiptFile(file: File): Promise<StampReceipt> {
+  if (file.size > MAX_RECEIPT_BYTES) throw new Error("Receipt limit: 8 KB. Choose a Momento receipt JSON.");
+  return decodeReceiptText(await file.text());
+}
 
 async function sha256(file: File): Promise<string> {
   if (file.size > MAX_BROWSER_FILE_SIZE) throw new Error("Browser limit: 100 MB. Use the CLI for larger files.");
@@ -26,17 +32,17 @@ function downloadReceipt(receipt: StampReceipt, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function verificationError(reason?: string): string {
+function verificationError(reason?: VerificationReason): string {
   switch (reason) {
-    case "Il file non corrisponde alla ricevuta.": return "File hash does not match the receipt.";
-    case "Chiave pubblica sconosciuta o non configurata.": return "Unknown or unconfigured public key.";
-    case "Firma non valida.": return "Invalid signature.";
+    case "hash_mismatch": return "File hash does not match the receipt.";
+    case "unknown_key": return "Unknown or unconfigured public key.";
+    case "invalid_signature": return "Invalid signature.";
     default: return "Invalid receipt.";
   }
 }
 
 export default function TimestampTools() {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "https://momento.mthatguy.workers.dev";
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "";
   const [activeTool, setActiveTool] = useState("create");
   const hashRequest = useRef(0);
   const [stampMode, setStampMode] = useState<"file" | "hash">("file");
@@ -53,6 +59,14 @@ export default function TimestampTools() {
   const [verifyResult, setVerifyResult] = useState<{ valid: boolean; message: string; receipt?: StampReceipt } | null>(null);
   const [inspectResult, setInspectResult] = useState<{ valid: boolean; message: string; receipt?: StampReceipt } | null>(null);
   const [receipt, setReceipt] = useState<StampReceipt | null>(null);
+  const [shareMessage, setShareMessage] = useState("");
+
+  async function shareReceipt() {
+    if (!receipt) return;
+    const url = `${window.location.origin}/verify/#${encodeReceiptFragment(receipt)}`;
+    try { await navigator.clipboard.writeText(url); setShareMessage("Verification link copied. Anyone with the link can read this receipt."); }
+    catch { setShareMessage(`Copy this verification link: ${url}`); }
+  }
 
   async function selectStampFile(file: File | null) {
     const request = ++hashRequest.current;
@@ -72,16 +86,16 @@ export default function TimestampTools() {
   async function stamp() {
     const hash = stampHash.trim().toLowerCase();
     if (!SHA256_RE.test(hash) || hashing) return;
-    setBusy("stamp"); setStampError(""); setReceipt(null);
+    setBusy("stamp"); setStampError(""); setReceipt(null); setShareMessage("");
     try {
-      const response = await fetch(`${apiBase}/api/v1/stamp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) });
-      if (!response.ok) throw new Error("Signing service unavailable. Try again shortly.");
-      const proof = await response.json() as StampReceipt;
+      const response = await fetch(`${apiBase}/api/v2/stamp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }), signal: AbortSignal.timeout(30_000) });
+      if (!response.ok) throw new Error(response.status === 429 ? "Too many requests. Wait a minute and try again." : "Signing service unavailable. Try again shortly.");
+      const proof = await readReceiptResponse(response);
       const checked = await verifyReceipt(proof, hash);
       if (!checked.valid) throw new Error("The returned receipt failed signature verification.");
       setReceipt(proof);
       downloadReceipt(proof, stampMode === "file" && stampFile ? stampFile.name : `sha256-${hash.slice(0, 12)}`);
-    } catch (error) { setStampError(error instanceof Error ? error.message : "Unexpected error."); }
+    } catch (error) { setStampError(error instanceof Error && error.name === "TimeoutError" ? "The request timed out. Please try again." : error instanceof Error ? error.message : "Unexpected error."); }
     finally { setBusy(null); }
   }
 
@@ -90,12 +104,12 @@ export default function TimestampTools() {
     setBusy("verify"); setVerifyResult(null);
     try {
       const hash = verifyMode === "file" ? await sha256(verifyFile!) : verifyHash;
-      const proof = JSON.parse(await proofFile.text()) as unknown;
+      const proof = await readReceiptFile(proofFile);
       const checked = await verifyReceipt(proof, hash);
       setVerifyResult(checked.valid && checked.receipt
         ? { valid: true, message: verifyMode === "file" ? "Signature and file hash match." : "Signature and supplied hash match. The original file was not checked here.", receipt: checked.receipt }
-        : { valid: false, message: verificationError(checked.reason) });
-    } catch { setVerifyResult({ valid: false, message: "Could not read the file or receipt." }); }
+        : { valid: false, message: verificationError(checked.reasonCode) });
+    } catch (error) { setVerifyResult({ valid: false, message: error instanceof Error ? error.message : "Could not read the file or receipt." }); }
     finally { setBusy(null); }
   }
 
@@ -103,18 +117,18 @@ export default function TimestampTools() {
     if (!inspectFile) return;
     setBusy("inspect"); setInspectResult(null);
     try {
-      const proof = JSON.parse(await inspectFile.text()) as unknown;
+      const proof = await readReceiptFile(inspectFile);
       const checked = await verifyReceipt(proof);
       setInspectResult(checked.valid && checked.receipt
         ? { valid: true, message: "Signature valid. File association has not been checked.", receipt: checked.receipt }
-        : { valid: false, message: verificationError(checked.reason) });
-    } catch { setInspectResult({ valid: false, message: "Could not read the receipt." }); }
+        : { valid: false, message: verificationError(checked.reasonCode) });
+    } catch (error) { setInspectResult({ valid: false, message: error instanceof Error ? error.message : "Could not read the receipt." }); }
     finally { setBusy(null); }
   }
 
   return <div className={styles.workbench}>
     <div className={styles.tabs} role="group" aria-label="Timestamp tools">
-      {(['create', 'verify', 'inspect'] as const).map((tool, index) => <button key={tool} type="button" aria-pressed={activeTool === tool} aria-controls={`${tool}-panel`} onClick={() => setActiveTool(tool)}><span>0{index + 1}</span> {tool === 'create' ? 'Create receipt' : tool === 'verify' ? 'Verify receipt' : 'Inspect receipt'}</button>)}
+      {(['create', 'verify', 'inspect', 'repository'] as const).map((tool, index) => <button key={tool} type="button" aria-pressed={activeTool === tool} aria-controls={`${tool}-panel`} onClick={() => setActiveTool(tool)}><span>0{index + 1}</span> {tool === 'create' ? 'Create receipt' : tool === 'verify' ? 'Verify receipt' : tool === 'inspect' ? 'Inspect receipt' : 'Check repository'}</button>)}
     </div>
     <section className={styles.panel} id="create-panel" hidden={activeTool !== 'create'} aria-labelledby="create">
     <h3 id="create">Create a timestamp receipt</h3>
@@ -127,7 +141,7 @@ export default function TimestampTools() {
     {stampMode === 'file' && (hashing || stampHash) && <ToolResult title={hashing ? 'Calculating SHA-256…' : 'File SHA-256'}><code className="break-all">{stampHash}</code></ToolResult>}
     <button className={styles.action} type="button" disabled={!SHA256_RE.test(stampHash) || hashing || busy !== null} onClick={stamp}>{busy === 'stamp' ? 'Signing…' : 'Create timestamp receipt'}</button>
     {stampError && <ToolResult type="error" title="Error" role="alert">{stampError}</ToolResult>}
-    {receipt && <ToolResult type="success" title="Receipt signed" role="status"><ReceiptDetails receipt={receipt} /><button className={styles.download} type="button" onClick={() => downloadReceipt(receipt, stampMode === 'file' && stampFile ? stampFile.name : 'sha256-' + receipt.payload.hash.slice(0,12))}>Download JSON</button></ToolResult>}
+    {receipt && <ToolResult type="success" title="Receipt signed" role="status"><ReceiptDetails receipt={receipt} /><button className={styles.download} type="button" onClick={() => downloadReceipt(receipt, stampMode === 'file' && stampFile ? stampFile.name : 'sha256-' + receipt.payload.hash.slice(0,12))}>Download JSON</button> <button className={styles.download} type="button" onClick={() => void shareReceipt()}>Copy verification link</button>{shareMessage && <p>{shareMessage}</p>}</ToolResult>}
 
     </section>
     <section className={styles.panel} id="verify-panel" hidden={activeTool !== "verify"} aria-labelledby="verify">
@@ -149,8 +163,13 @@ export default function TimestampTools() {
     <button className={styles.action} type="button" disabled={!inspectFile || busy !== null} onClick={inspect}>{busy === 'inspect' ? 'Inspecting…' : 'Inspect signed time'}</button>
     {inspectResult && <ToolResult type={inspectResult.valid ? 'success' : 'error'} title={inspectResult.valid ? 'Valid signature' : 'Inspection failed'} role="status"><p>{inspectResult.message}</p>{inspectResult.receipt && <ReceiptDetails receipt={inspectResult.receipt} />}</ToolResult>}
     </section>
+    <section className={styles.panel} id="repository-panel" hidden={activeTool !== "repository"} aria-labelledby="repository">
+    <h3 id="repository">Check a repository</h3>
+    <p>Verify a repository&apos;s Momento commit proofs on your computer. Enter a Git repository below to get copyable commands.</p>
+    <div className={styles.controls}><RepositoryCommands /></div>
+    </section>
     <aside className={styles.guide} aria-label="How this tool works">
-      <p className={styles.guideLabel}>{activeTool === 'create' ? 'FROM FILE TO PROOF' : activeTool === 'verify' ? 'CHECK YOUR PROOF' : 'INSIDE THE RECEIPT'}</p>
+      <p className={styles.guideLabel}>{activeTool === 'create' ? 'FROM FILE TO PROOF' : activeTool === 'verify' ? 'CHECK YOUR PROOF' : activeTool === 'inspect' ? 'INSIDE THE RECEIPT' : 'CHECK A REPOSITORY'}</p>
       <ol>{(activeTool === 'create' ? [
         ['Choose your input', 'Pick a file to hash locally, or paste a SHA-256 fingerprint.'],
         ['Capture the moment', 'The server signs the hash and its current time.'],
@@ -159,10 +178,14 @@ export default function TimestampTools() {
         ['Add the original', 'Choose your file or enter the hash you want to check.'],
         ['Add the receipt', 'Select the JSON proof saved when it was timestamped.'],
         ['Check the match', 'Verify the signature and compare the fingerprint locally.'],
-      ] : [
+      ] : activeTool === 'inspect' ? [
         ['Open a receipt', 'Choose a Momento JSON receipt from your device.'],
         ['Check its signature', 'Verify the receipt using the configured public key.'],
         ['Read the signed time', 'See the timestamp and hash. This does not check a file.'],
+      ] : [
+        ['Enter the repository', 'Paste an HTTPS Git remote and an optional activation SHA.'],
+        ['Copy the commands', 'Clone the repository and fetch its Momento proofs.'],
+        ['Verify locally', 'Check every commit in scope with the Bun-run CLI.'],
       ]).map(([title, description]) => <li key={title}><strong>{title}</strong><p>{description}</p></li>)}</ol>
       <p className={styles.guideNote}>Your files stay on your device.<br />Only a hash is sent when creating a receipt.</p>
     </aside>

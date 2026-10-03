@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { execFileSync } from 'node:child_process';
-import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,15 +13,15 @@ import { stampCommit, publishBadge } from '../scripts/action.mjs';
 test('Action hashes exact commit bytes, normalizes time, and rejects untrusted receipts', async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'momento-action-'));
   const git = (...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
-  const { privateKey, publicKey } = generateKeyPairSync('ed25519');
-  PUBLIC_KEYS['action-test'] = publicKey.export({ format: 'der', type: 'spki' }).toString('base64url');
+  const { secretKey: privateKey, publicKey } = ml_dsa65.keygen();
+  PUBLIC_KEYS['action-test'] = Buffer.from(publicKey).toString('base64url');
   try {
     git('init');
     git('-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'Fixture');
     const body = git('cat-file', 'commit', 'HEAD');
     const hash = createHash('sha256').update(body).digest('hex');
-    const payload = { version: 1 as const, hash, issuedAt: '2026-09-25T00:00:00.000Z', receiptId: Buffer.alloc(16).toString('base64url'), keyId: 'action-test' };
-    const receipt = { payload, signature: sign(null, signingBytes(payload), privateKey).toString('base64url') };
+    const payload = { version: 2 as const, hash, issuedAt: '2026-09-25T00:00:00.000Z', receiptId: Buffer.alloc(16).toString('base64url'), keyId: 'action-test' };
+    const receipt = { payload, signature: Buffer.from(ml_dsa65.sign(signingBytes(payload), privateKey)).toString('base64url') };
     const fetchImpl = async (_url: string, options: RequestInit) => {
       assert.deepEqual(JSON.parse(options.body as string), { hash });
       return Response.json(receipt, { status: 201 });
@@ -57,7 +58,7 @@ test('Action hashes exact commit bytes, normalizes time, and rejects untrusted r
     receipt.payload.hash = '0'.repeat(64);
     await assert.rejects(stampCommit({ cwd, outputDirectory: 'bad', fetchImpl }), /hash_mismatch/);
     receipt.payload.hash = hash;
-    receipt.signature = Buffer.alloc(64).toString('base64url');
+    receipt.signature = Buffer.alloc(3309).toString('base64url');
     await assert.rejects(stampCommit({ cwd, outputDirectory: 'bad', fetchImpl }), /invalid_signature/);
     assert.equal(existsSync(join(cwd, 'bad')), false);
     await assert.rejects(stampCommit({ cwd, fetchImpl: async () => new Response(null, { status: 429 }) }), /HTTP 429/);

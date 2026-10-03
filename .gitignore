@@ -2,10 +2,14 @@ node_modules/
 dist/
 .wrangler/
 .dev.vars
+.dev.vars.*
 .env
+.env.*
 *.tsbuildinfo
 coverage/
 momento-proof/
+release/
+*.tgz
 *.momento.json
 
 .next/

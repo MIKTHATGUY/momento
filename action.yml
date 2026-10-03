@@ -1,10 +1,22 @@
-name: Momento timestamp
-description: Timestamp a Git commit with Momento and generate a Shields.io endpoint badge.
+name: Momento Timestamp
+description: Timestamp a Git commit or verify locally attested history and publish a coverage badge.
 author: MIKTHATGUY
 branding:
   icon: clock
   color: blue
 inputs:
+  mode:
+    description: stamp timestamps HEAD; verify-history checks existing local-hook receipts without issuing new ones.
+    default: 'stamp'
+  target-ref:
+    description: Commit or ref to verify in verify-history mode.
+    default: 'HEAD'
+  proofs-ref:
+    description: Remote branch containing local-hook receipts.
+    default: 'refs/heads/momento-proofs'
+  start-commit:
+    description: Explicit activation commit for existing repositories; empty checks the entire history.
+    default: ''
   publish-badge:
     description: Publish the verified timestamp and proof to the momento-badges branch of your repository.
     default: 'true'
@@ -15,6 +27,14 @@ inputs:
     description: Directory for the commit proof and badge JSON.
     default: momento-proof
 outputs:
+  confirmed:
+    description: Number of confirmed commits in verify-history mode.
+  total:
+    description: Number of commits checked in verify-history mode.
+  valid:
+    description: Whether every checked commit is confirmed.
+  scope:
+    description: entire-history or since-activation.
   badge-url:
     description: Shields.io URL for the published Momento timestamp.
   badge-markdown:
@@ -31,4 +51,4 @@ outputs:
     description: Absolute path to the proof directory.
 runs:
   using: node24
-  main: scripts/action.mjs
+  main: scripts/action.bundle.mjs

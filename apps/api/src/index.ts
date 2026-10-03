@@ -1,20 +1,54 @@
+import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { describeRoute, openAPIRouteHandler, type GenerateSpecOptions } from "hono-openapi";
 import { openapi } from "./openapi";
-import { KEY_ID, PROTOCOL_VERSION, PUBLIC_KEYS, bytesToBase64url, base64urlToBytes, isSha256Hex, signingBytes, verifyReceipt, type StampPayload, type StampReceipt } from "@momento/protocol";
+import { loadChangelog, releasesMarkdown, RELEASES_URL } from './releases';
+import { KEY_ID, KEY_METADATA, PROTOCOL_VERSION, PUBLIC_KEYS, publicKeyFingerprint, bytesToBase64url, base64urlToBytes, isSha256Hex, signingBytes, verifyReceipt, type StampPayload, type StampReceipt } from "@mikthatguy/momento-protocol";
 
 type Bindings = {
-  SIGNING_PRIVATE_KEY_BASE64URL: string;
+  ML_DSA65_PRIVATE_KEY_BASE64URL: string;
   ASSETS: Fetcher;
   STAMP_CLIENT_LIMIT: RateLimit;
   STAMP_GLOBAL_LIMIT: RateLimit;
   VERIFY_CLIENT_LIMIT: RateLimit;
   VERIFY_GLOBAL_LIMIT: RateLimit;
 };
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<{ Bindings: Bindings; Variables: { requestId: string } }>();
 
-app.use("/api/*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"], allowHeaders: ["Content-Type"] }));
+app.use("/api/*", async (c, next) => {
+  const requestId = crypto.randomUUID();
+  const started = performance.now();
+  c.set("requestId", requestId);
+  c.header("X-Request-ID", requestId);
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "no-referrer");
+  c.header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+  c.header("Cache-Control", "no-store");
+  await next();
+  const path = ["/api/releases", "/api/health", "/api/ready", "/api/v2/keys", "/api/v2/stamp", "/api/v2/verify", "/api/openapi.json"].includes(c.req.path) ? c.req.path : "other";
+  console.log(JSON.stringify({ event: "api_request", requestId, method: c.req.method, path, status: c.res.status, durationMs: Math.round(performance.now() - started), rateLimited: c.res.status === 429 }));
+});
+app.use("/api/*", cors({ origin: "*", allowMethods: ["GET", "POST", "OPTIONS"], allowHeaders: ["Content-Type"], exposeHeaders: ["X-Request-ID", "Retry-After"] }));
+
+// Cache a self-test briefly per isolate, including in-flight checks. Never publish key material.
+let readiness: { privateValue: string; publicValue: string; expiresAt: number; result: Promise<boolean> } | undefined;
+async function signingReady(privateValue: string, publicValue: string): Promise<boolean> {
+  if (!readiness || readiness.privateValue !== privateValue || readiness.publicValue !== publicValue || readiness.expiresAt <= Date.now()) {
+    const result = (async () => {
+      try {
+        const privateKey = base64urlToBytes(privateValue);
+        const publicKey = base64urlToBytes(publicValue);
+        const challenge = new TextEncoder().encode("Momento readiness self-test v2 / ML-DSA-65");
+        const signature = ml_dsa65.sign(challenge, privateKey);
+        return ml_dsa65.verify(signature, challenge, publicKey);
+      } catch { return false; }
+    })();
+    readiness = { privateValue, publicValue, expiresAt: Date.now() + 30_000, result };
+  }
+  return readiness.result;
+}
 
 async function readSmallJson(request: Request, maxBytes = 1024): Promise<unknown> {
   const reader = request.body?.getReader();
@@ -56,10 +90,42 @@ export const openapiOptions: Partial<GenerateSpecOptions> = {
 };
 
 app.get("/api/health", describeRoute(openapi.paths['/api/health'].get), c => c.json({ ok: true }));
+app.get('/api/releases', async c => {
+  try {
+    const releases = await loadChangelog();
+    c.header('Cache-Control', 'public, max-age=300');
+    return c.json({ releases, source: RELEASES_URL });
+  } catch {
+    return c.json({ error: 'releases_unavailable' }, 503, { 'Cache-Control': 'no-store', 'Retry-After': '60' });
+  }
+});
+app.get('/api/releases/markdown', async c => {
+  try {
+    const markdown = releasesMarkdown(await loadChangelog());
+    c.header('Cache-Control', 'public, max-age=300');
+    c.header('Content-Type', 'text/markdown; charset=utf-8');
+    return c.body(markdown);
+  } catch {
+    return c.text('Release notes are temporarily unavailable.', 503, { 'Cache-Control': 'no-store', 'Retry-After': '60' });
+  }
+});
+app.get("/api/ready", describeRoute(openapi.paths['/api/ready'].get), async c => {
+  const configured = c.env?.ML_DSA65_PRIVATE_KEY_BASE64URL && PUBLIC_KEYS[KEY_ID] && KEY_METADATA[KEY_ID]?.status === "active";
+  const bindings = [c.env?.STAMP_CLIENT_LIMIT, c.env?.STAMP_GLOBAL_LIMIT, c.env?.VERIFY_CLIENT_LIMIT, c.env?.VERIFY_GLOBAL_LIMIT].every(limit => typeof limit?.limit === "function");
+  const ready = Boolean(configured && bindings && await signingReady(c.env.ML_DSA65_PRIVATE_KEY_BASE64URL, PUBLIC_KEYS[KEY_ID]));
+  return c.json({ ready }, ready ? 200 : 503);
+});
 app.get("/api/openapi.json", openAPIRouteHandler(app, openapiOptions));
-app.get("/api/v1/keys", describeRoute(openapi.paths['/api/v1/keys'].get), c => c.json({ algorithm: "Ed25519", keys: PUBLIC_KEYS }));
+app.get("/api/v2/keys", describeRoute(openapi.paths['/api/v2/keys'].get), async c => {
+  const metadata = Object.fromEntries(await Promise.all(Object.entries(PUBLIC_KEYS).map(async ([id, value]) => [id, {
+    createdAt: KEY_METADATA[id]?.createdAt ?? null,
+    status: KEY_METADATA[id]?.status ?? (id === KEY_ID ? "active" : "retired"),
+    fingerprint: await publicKeyFingerprint(value), fingerprintAlgorithm: "sha256-ml-dsa65-raw"
+  }])));
+  return c.json({ algorithm: "ML-DSA-65", keys: PUBLIC_KEYS, metadata });
+});
 
-app.post("/api/v1/stamp", describeRoute(openapi.paths['/api/v1/stamp'].post), async c => {
+app.post("/api/v2/stamp", describeRoute(openapi.paths['/api/v2/stamp'].post), async c => {
   // Only Cloudflare's client-IP header is trusted. A shared fallback limits
   // requests in local development, where Cloudflare does not set the header.
   const client = c.req.header("cf-connecting-ip") ?? "unknown";
@@ -71,11 +137,10 @@ app.post("/api/v1/stamp", describeRoute(openapi.paths['/api/v1/stamp'].post), as
     if (!global.success || !perClient.success) {
       return c.json({ error: "rate_limited" }, 429, { "Retry-After": "60", "Cache-Control": "no-store" });
     }
-  } catch (error) {
-    console.error("Rate limiting unavailable", error);
+  } catch {
     return c.json({ error: "rate_limit_unavailable" }, 503);
   }
-  if (!c.req.header("content-type")?.toLowerCase().startsWith("application/json")) return c.json({ error: "unsupported_media_type" }, 415);
+  if (c.req.header("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return c.json({ error: "unsupported_media_type" }, 415);
   if (Number(c.req.header("content-length") ?? 0) > 1024) return c.json({ error: "request_too_large" }, 413);
   let body: unknown;
   try { body = await readSmallJson(c.req.raw); }
@@ -83,11 +148,11 @@ app.post("/api/v1/stamp", describeRoute(openapi.paths['/api/v1/stamp'].post), as
   if (typeof body !== "object" || body === null || !isSha256Hex((body as Record<string, unknown>).hash) || Object.keys(body).length !== 1) {
     return c.json({ error: "invalid_hash" }, 400);
   }
-  const privateKeyRaw = c.env.SIGNING_PRIVATE_KEY_BASE64URL;
-  if (!privateKeyRaw || !PUBLIC_KEYS[KEY_ID] || PUBLIC_KEYS[KEY_ID].startsWith("REPLACE_")) return c.json({ error: "signing_not_configured" }, 503);
+  const privateKeyRaw = c.env.ML_DSA65_PRIVATE_KEY_BASE64URL;
+  if (!privateKeyRaw || !PUBLIC_KEYS[KEY_ID] || PUBLIC_KEYS[KEY_ID].startsWith("REPLACE_") || KEY_METADATA[KEY_ID]?.status !== "active") return c.json({ error: "signing_not_configured" }, 503);
 
   try {
-    const privateKey = await crypto.subtle.importKey("pkcs8", base64urlToBytes(privateKeyRaw), "Ed25519", false, ["sign"]);
+    const privateKey = base64urlToBytes(privateKeyRaw);
     const payload: StampPayload = {
       version: PROTOCOL_VERSION,
       hash: (body as { hash: string }).hash,
@@ -95,17 +160,16 @@ app.post("/api/v1/stamp", describeRoute(openapi.paths['/api/v1/stamp'].post), as
       receiptId: bytesToBase64url(crypto.getRandomValues(new Uint8Array(16))),
       keyId: KEY_ID
     };
-    const signature = bytesToBase64url(new Uint8Array(await crypto.subtle.sign("Ed25519", privateKey, signingBytes(payload))));
+    const signature = bytesToBase64url(ml_dsa65.sign(signingBytes(payload), privateKey));
     const receipt: StampReceipt = { payload, signature };
     if (!(await verifyReceipt(receipt)).valid) return c.json({ error: "signing_key_mismatch" }, 503);
     return c.json(receipt, 201, { "Cache-Control": "no-store" });
-  } catch (error) {
-    console.error("Signing failed", error);
+  } catch {
     return c.json({ error: "signing_failed" }, 500);
   }
 });
 
-app.post("/api/v1/verify", describeRoute(openapi.paths['/api/v1/verify'].post), async c => {
+app.post("/api/v2/verify", describeRoute(openapi.paths['/api/v2/verify'].post), async c => {
   const client = c.req.header("cf-connecting-ip") ?? "unknown";
   try {
     const [global, perClient] = await Promise.all([
@@ -113,11 +177,10 @@ app.post("/api/v1/verify", describeRoute(openapi.paths['/api/v1/verify'].post), 
       c.env.VERIFY_CLIENT_LIMIT.limit({ key: client })
     ]);
     if (!global.success || !perClient.success) return c.json({ error: "rate_limited" }, 429, { "Retry-After": "60", "Cache-Control": "no-store" });
-  } catch (error) {
-    console.error("Verification rate limiting unavailable", error);
+  } catch {
     return c.json({ error: "rate_limit_unavailable" }, 503);
   }
-  if (!c.req.header("content-type")?.toLowerCase().startsWith("application/json")) return c.json({ error: "unsupported_media_type" }, 415);
+  if (c.req.header("content-type")?.split(";")[0].trim().toLowerCase() !== "application/json") return c.json({ error: "unsupported_media_type" }, 415);
   if (Number(c.req.header("content-length") ?? 0) > 8192) return c.json({ error: "request_too_large" }, 413);
   let body: unknown;
   try { body = await readSmallJson(c.req.raw, 8192); }

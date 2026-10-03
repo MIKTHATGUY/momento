@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { generateKeyPairSync } from "node:crypto";
+import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import { test } from "node:test";
 import app from "../apps/api/src/index.ts";
-import { KEY_ID, PUBLIC_KEYS, verifyReceipt } from "../packages/protocol/src/index.ts";
+import { KEY_ID, PUBLIC_KEYS, verifyReceipt } from "@mikthatguy/momento-protocol";
 
 function limitBindings(allowClient = true, allowGlobal = true) {
   return {
@@ -14,14 +14,14 @@ function limitBindings(allowClient = true, allowGlobal = true) {
 }
 
 test("the Worker signs only a supplied hash with its own timestamp; verification is offline", async () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const { secretKey: privateKey, publicKey } = ml_dsa65.keygen();
   const previous = PUBLIC_KEYS[KEY_ID];
-  PUBLIC_KEYS[KEY_ID] = publicKey.export({ format: "der", type: "spki" }).toString("base64url");
-  const env = { SIGNING_PRIVATE_KEY_BASE64URL: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url"), ...limitBindings() };
+  PUBLIC_KEYS[KEY_ID] = Buffer.from(publicKey).toString("base64url");
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
   const hash = "a".repeat(64);
   try {
     const before = Date.now();
-    const response = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) }, env);
+    const response = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) }, env);
     const after = Date.now();
     assert.equal(response.status, 201);
     const receipt = await response.json() as Record<string, any>;
@@ -35,14 +35,14 @@ test("the Worker signs only a supplied hash with its own timestamp; verification
 });
 
 test("the verification API accepts receipt objects, flat fields and base64 receipts", async () => {
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+  const { secretKey: privateKey, publicKey } = ml_dsa65.keygen();
   const previous = PUBLIC_KEYS[KEY_ID];
-  PUBLIC_KEYS[KEY_ID] = publicKey.export({ format: "der", type: "spki" }).toString("base64url");
-  const env = { SIGNING_PRIVATE_KEY_BASE64URL: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url"), ...limitBindings() };
+  PUBLIC_KEYS[KEY_ID] = Buffer.from(publicKey).toString("base64url");
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
   const hash = "a".repeat(64);
-  const post = (body: unknown, bindings = env) => app.request("/api/v1/verify", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://example.org" }, body: JSON.stringify(body) }, bindings);
+  const post = (body: unknown, bindings = env) => app.request("/api/v2/verify", { method: "POST", headers: { "Content-Type": "application/json", Origin: "https://example.org" }, body: JSON.stringify(body) }, bindings);
   try {
-    const stamped = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) }, env);
+    const stamped = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash }) }, env);
     const receipt = await stamped.json() as Record<string, any>;
     assert.equal(stamped.status, 201);
     const encoded = Buffer.from(JSON.stringify(receipt), "utf8").toString("base64");
@@ -78,41 +78,41 @@ test("the verification API accepts receipt objects, flat fields and base64 recei
     const denied = await post({ hash, receipt }, { ...env, VERIFY_CLIENT_LIMIT: { limit: async () => ({ success: false }) } });
     assert.equal(denied.status, 429);
     assert.equal(denied.headers.get("retry-after"), "60");
-    const preflight = await app.request("/api/v1/verify", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type" } });
+    const preflight = await app.request("/api/v2/verify", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type" } });
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers.get("access-control-allow-origin"), "*");
   } finally { PUBLIC_KEYS[KEY_ID] = previous; }
 });
 
 test("the API rejects a client-supplied time and malformed hashes", async () => {
-  const invalid = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64), issuedAt: "2020-01-01T00:00:00.000Z" }) }, limitBindings());
+  const invalid = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64), issuedAt: "2020-01-01T00:00:00.000Z" }) }, limitBindings());
   assert.equal(invalid.status, 400);
-  const malformed = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "not-a-hash" }) }, limitBindings());
+  const malformed = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "not-a-hash" }) }, limitBindings());
   assert.equal(malformed.status, 400);
-  const huge = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64), padding: "x".repeat(2000) }) }, limitBindings());
+  const huge = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64), padding: "x".repeat(2000) }) }, limitBindings());
   assert.equal(huge.status, 413);
 });
 
 test("the Worker refuses to issue receipts when its secret does not match the published key", async () => {
-  const { privateKey } = generateKeyPairSync("ed25519");
-  const env = { SIGNING_PRIVATE_KEY_BASE64URL: privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url"), ...limitBindings() };
-  const response = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, env);
+  const { secretKey: privateKey } = ml_dsa65.keygen();
+  const env = { ML_DSA65_PRIVATE_KEY_BASE64URL: Buffer.from(privateKey).toString("base64url"), ...limitBindings() };
+  const response = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, env);
   assert.equal(response.status, 503);
   assert.equal((await response.json() as { error: string }).error, "signing_key_mismatch");
 });
 
 test("the public API allows browser clients and rejects abusive signing traffic", async () => {
-  const preflight = await app.request("/api/v1/stamp", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type" } });
+  const preflight = await app.request("/api/v2/stamp", { method: "OPTIONS", headers: { Origin: "https://example.org", "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "Content-Type" } });
   assert.equal(preflight.status, 204);
   assert.equal(preflight.headers.get("access-control-allow-origin"), "*");
 
-  const denied = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.5" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, limitBindings(false));
+  const denied = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.5" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, limitBindings(false));
   assert.equal(denied.status, 429);
   assert.equal(denied.headers.get("retry-after"), "60");
   assert.equal((await denied.json() as { error: string }).error, "rate_limited");
 
-  const globalDenied = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, limitBindings(true, false));
+  const globalDenied = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hash: "a".repeat(64) }) }, limitBindings(true, false));
   assert.equal(globalDenied.status, 429);
-  const wrongType = await app.request("/api/v1/stamp", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "hello" }, limitBindings());
+  const wrongType = await app.request("/api/v2/stamp", { method: "POST", headers: { "Content-Type": "text/plain" }, body: "hello" }, limitBindings());
   assert.equal(wrongType.status, 415);
 });

@@ -1,0 +1,15 @@
+# Security policy
+
+Momento Timestamp is a community project. The v2 release is being prepared; once published, security fixes will target the latest 2.x release. There is no guaranteed response time or uptime commitment.
+
+## Report privately
+
+Use [GitHub private vulnerability reporting](https://github.com/MIKTHATGUY/momento/security/advisories/new). Include affected versions, reproduction steps, and the impact. Do not send private signing keys, access tokens, or sensitive original files.
+
+If private reporting is unavailable, open an issue requesting a private contact without revealing exploit details. Maintainers should enable private vulnerability reporting before the release.
+
+## Scope and trust
+
+Report signature bypasses, parser inconsistencies, secret exposure, unexpected file uploads, receipt tampering, or exploitable resource exhaustion. The documented ability of the signing-key holder to backdate new receipts is a current design limit. See [the threat model](docs/threat-model.md) and [key lifecycle](docs/key-lifecycle.md).
+
+Receipts authenticate the issuer's statement about a hash and time. They do not certify an independent clock, authorship, ownership, RFC 3161 compliance, or a legal conclusion. Keep an authentic public key and original bytes for independent verification.

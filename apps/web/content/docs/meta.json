@@ -1,9 +1,24 @@
 {
   "pages": [
+    "---Start here---",
     "index",
+    "---Integrations---",
     "api",
-    "openapi",
+    "rate-limits",
+    "git",
     "github-action",
-    "trust"
+    "---Protocol and trust---",
+    "protocol",
+    "trust",
+    "key-lifecycle",
+    "threat-model",
+    "architecture",
+    "---Project---",
+    "changelog",
+    "security",
+    "contributing",
+    "---Maintainer guides---",
+    "operations",
+    "openapi"
   ]
 }

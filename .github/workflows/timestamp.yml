@@ -1,4 +1,4 @@
-name: Timestamp commit
+name: Verify Momento history
 on:
   push:
     branches: [main]
@@ -9,14 +9,21 @@ concurrency:
   group: momento-timestamp
   cancel-in-progress: false
 jobs:
-  timestamp:
+  verify:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
       - uses: ./
         id: stamp
-      - uses: actions/upload-artifact@v4
+        with:
+          mode: verify-history
+          start-commit: ${{ vars.MOMENTO_START_COMMIT }}
+      - uses: actions/upload-artifact@v7
+        if: always()
         with:
           name: momento-${{ steps.stamp.outputs.commit }}
           path: momento-proof/

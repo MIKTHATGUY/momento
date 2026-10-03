@@ -3,19 +3,30 @@ import type { DescribeRouteOptions, GenerateSpecOptions } from 'hono-openapi';
 export const openapi: GenerateSpecOptions['documentation'] & {
   paths: {
     '/api/health': { get: DescribeRouteOptions };
-    '/api/v1/keys': { get: DescribeRouteOptions };
-    '/api/v1/stamp': { post: DescribeRouteOptions };
-    '/api/v1/verify': { post: DescribeRouteOptions };
+    '/api/ready': { get: DescribeRouteOptions };
+    '/api/v2/keys': { get: DescribeRouteOptions };
+    '/api/v2/stamp': { post: DescribeRouteOptions };
+    '/api/v2/verify': { post: DescribeRouteOptions };
   };
 } = {
   "openapi": "3.1.0",
   "info": {
-    "title": "Momento API",
-    "version": "1.0.0",
+    "title": "Momento Timestamp API",
+    "version": "2.0.0",
     "description": "Signed timestamps for SHA-256 hashes. No authentication is required. Files stay on your device; send only their hashes."
   },
   "servers": [{ "url": "https://momento.mthatguy.workers.dev", "description": "Public API" }],
   "paths": {
+    "/api/ready": {
+      "get": {
+        "operationId": "getReadiness", "summary": "Check signing readiness",
+        "description": "Imports the signing and verification keys and performs an ML-DSA-65 self-test. Checks rate-limit bindings are configured without consuming quota. Self-test results are cached up to 30 seconds per isolate; this does not test the rate-limit backend or prove uptime.",
+        "responses": {
+          "200": { "description": "Ready to sign", "content": { "application/json": { "schema": { "type": "object", "required": ["ready"], "properties": { "ready": { "type": "boolean", "const": true } } } } } },
+          "503": { "description": "Signing configuration or bindings need attention", "content": { "application/json": { "schema": { "type": "object", "required": ["ready"], "properties": { "ready": { "type": "boolean", "const": false } } } } } }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "getHealth", "summary": "Check service health",
@@ -23,13 +34,13 @@ export const openapi: GenerateSpecOptions['documentation'] & {
         "responses": { "200": { "description": "Service responds", "content": { "application/json": { "schema": { "type": "object", "required": ["ok"], "properties": { "ok": { "type": "boolean", "const": true } } } } } } }
       }
     },
-    "/api/v1/keys": {
+    "/api/v2/keys": {
       "get": {
         "operationId": "getPublicKeys", "summary": "Get public signing keys",
-        "responses": { "200": { "description": "Ed25519 public keys, indexed by key ID", "content": { "application/json": { "schema": { "type": "object", "required": ["algorithm", "keys"], "properties": { "algorithm": { "type": "string", "const": "Ed25519" }, "keys": { "type": "object", "additionalProperties": { "type": "string", "description": "Base64url-encoded SPKI DER public key" } } } } } } } }
+        "responses": { "200": { "description": "ML-DSA-65 public keys and lifecycle metadata, indexed by key ID", "content": { "application/json": { "schema": { "type": "object", "required": ["algorithm", "keys", "metadata"], "properties": { "algorithm": { "type": "string", "const": "ML-DSA-65" }, "keys": { "type": "object", "additionalProperties": { "type": "string", "description": "Base64url-encoded raw ML-DSA-65 public key" } }, "metadata": { "type": "object", "additionalProperties": { "type": "object", "required": ["status", "createdAt", "fingerprint", "fingerprintAlgorithm"], "properties": { "status": { "type": "string", "enum": ["active", "retired", "compromised"] }, "createdAt": { "anyOf": [{ "type": "string" }, { "enum": [null] }], "description": "Actual creation time if known; otherwise null" }, "fingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" }, "fingerprintAlgorithm": { "type": "string", "const": "sha256-ml-dsa65-raw" } } } } } } } } } }
       }
     },
-    "/api/v1/stamp": {
+    "/api/v2/stamp": {
       "post": {
         "operationId": "createStamp", "summary": "Create a timestamp",
         "description": "Signs a SHA-256 hash with the current server time. JSON body limit: 1,024 bytes. Only hash is accepted. Rate limits: 30 requests/minute per client IP and 300 per Cloudflare location. Responses are not stored by the service.",
@@ -45,7 +56,7 @@ export const openapi: GenerateSpecOptions['documentation'] & {
         }
       }
     },
-    "/api/v1/verify": {
+    "/api/v2/verify": {
       "post": {
         "operationId": "verifyStamp", "summary": "Verify a receipt",
         "description": "Checks the receipt signature and supplied file hash. JSON body limit: 8,192 bytes. Choose exactly one request format. Invalid receipts return HTTP 200 with valid: false. Rate limits: 120 requests/minute per client IP and 1,200 per Cloudflare location.",
@@ -71,16 +82,16 @@ export const openapi: GenerateSpecOptions['documentation'] & {
   "components": {
     "schemas": {
       "Hash": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "Lowercase SHA-256 digest", "example": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
-      "Signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{86}$", "description": "Unpadded Base64url encoding of a 64-byte Ed25519 signature" },
+      "Signature": { "type": "string", "pattern": "^[A-Za-z0-9_-]{4412}$", "description": "Unpadded Base64url encoding of a 3309-byte ML-DSA-65 signature" },
       "Payload": {
         "type": "object", "additionalProperties": false,
         "required": ["version", "hash", "issuedAt", "receiptId", "keyId"],
         "properties": {
-          "version": { "type": "integer", "const": 1 },
+          "version": { "type": "integer", "const": 2 },
           "hash": { "$ref": "#/components/schemas/Hash" },
           "issuedAt": { "type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$", "description": "Server timestamp in UTC with milliseconds" },
           "receiptId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{22}$", "description": "Unpadded Base64url encoding of 16 random bytes" },
-          "keyId": { "type": "string", "minLength": 1, "example": "momento-v1" }
+          "keyId": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,128}$", "example": "momento-v2-ml-dsa65" }
         }
       },
       "Receipt": { "type": "object", "additionalProperties": false, "required": ["payload", "signature"], "properties": { "payload": { "$ref": "#/components/schemas/Payload" }, "signature": { "$ref": "#/components/schemas/Signature" } } },

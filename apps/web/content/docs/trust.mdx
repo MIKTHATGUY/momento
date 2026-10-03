@@ -3,13 +3,20 @@ title: Trust and time accuracy
 description: What a signature proves, how time is assigned, and where trust begins.
 ---
 
-Momento is a timestamp authority using a custom signed JSON protocol. Its receipts can be checked independently with the [public key and verifier](https://github.com/MIKTHATGUY/momento/blob/main/packages/protocol/src/index.ts). It does **not** implement the [RFC 3161 timestamp protocol](https://www.rfc-editor.org/rfc/rfc3161.html). A timestamp provides evidence of existence by a time; it does not establish the original creation time, authorship, or ownership of a file.
+Momento is a timestamp authority using a custom signed JSON protocol. Its receipts can be checked independently with the [public key and verifier](/docs/api#verify-offline). It does **not** implement the [RFC 3161 timestamp protocol](https://www.rfc-editor.org/rfc/rfc3161.html). A timestamp provides evidence of existence by a time; it does not establish the original creation time, authorship, or ownership of a file.
 
 ## What you can verify
 
+```mermaid
+flowchart TD
+  Hash[SHA-256 of your file] --> Receipt[Signed receipt with issuedAt]
+  Receipt --> Proven[Proves: matching data existed by that time]
+  Receipt -.-> NotProven[Does not prove: creation time, authorship, ownership]
+```
+
 | Property | What Momento provides |
 | --- | --- |
-| Receipt integrity | Ed25519 verification checks the signed hash, timestamp, receipt ID, version, and key ID. Editing a signed field invalidates the existing signature. |
+| Receipt integrity | ML-DSA-65 verification checks the signed hash, timestamp, receipt ID, version, and key ID. Editing a signed field invalidates the existing signature. |
 | File association | Recomputing SHA-256 over the file's raw bytes lets you check that it matches the signed hash. |
 | Client control of time | The stamp endpoint accepts only a hash. The Worker selects `issuedAt` from its own clock. |
 | Offline verification | Saved receipts can be verified without calling Momento. Obtain and retain the authentic public key through a trusted channel. |
@@ -18,13 +25,9 @@ Momento is a timestamp authority using a custom signed JSON protocol. Its receip
 
 ## Cryptographic strength
 
-Ed25519 targets approximately **128-bit classical security**, as described in [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032.html#section-8.5). The scale associated with that security level is:
+Momento v2 uses **ML-DSA-65**, a NIST category 3 post-quantum signature algorithm standardized in [FIPS 204](https://csrc.nist.gov/pubs/fips/204/final). It is designed to resist known classical and quantum attacks; “quantum-proof” is not an absolute guarantee.
 
-$$
-2^{128} \approx 3.40 \times 10^{38}
-$$
-
-This describes a cryptographic attack work scale under standard assumptions, not an exact operation count for every attack or a probability that a timestamp is correct. It assumes secure key generation, correct implementation, and protection of the private key. It does not cover key theft, a dishonest signer, or quantum attacks.
+File fingerprints remain SHA-256. Hash security and signature security are distinct; quantum algorithms reduce the margins of SHA-256, and this upgrade does not claim category 3 security for the entire system. Key protection, implementation correctness, and the issuer’s clock still matter. The pinned JavaScript cryptography library is not independently audited and does not claim constant-time signing.
 
 <Callout title="Signatures and backdating" type="warn">
 
@@ -46,14 +49,20 @@ Under honest issuance and the cryptographic assumptions above, matching data wou
 
 ## Check and preserve a receipt
 
-1. Keep the original file bytes, receipt, and authentic public verification key. For the GitHub Action, retain `commit.txt`, `receipt.json`, and `proof.json`.
+1. Keep the original file bytes, receipt, and authentic public verification key. For the Action’s `stamp` mode, retain `commit.txt`, `receipt.json`, and `proof.json`. For `verify-history`, preserve the source Git objects, the complete `momento-proofs` branch, the reported activation SHA (if any), and `proof.json`; verify the chain independently using the [Git integration](/docs/git). Receipt links establish formation bounds for the exact commit object, not when its code was written or the truth of its Git dates.
 2. Verify the signature locally and compare the file's SHA-256 with the signed hash. The CLI command is shown below; the Action also performs these checks before publishing.
 3. For a commit receipt, compare `commit.txt` against `git cat-file commit COMMIT` from the original repository. Git author and committer dates are separate metadata.
 4. If your use case needs evidence independent of Momento's operator, obtain an additional independent timestamp over the receipt or preserve it in an independently witnessed publication system. That can establish that the receipt existed by the external observation time; it does not retroactively certify Momento's clock reading.
 
 ```sh
-npm run start -w @momento/cli -- verify path/to/receipt.json path/to/file
+bun run --cwd packages/cli start -- verify path/to/receipt.json path/to/file
 ```
 
 The badge is a convenient display. Its color, cached image, and mutable publishing branch are not substitutes for receipt verification or independent preservation.
+
+## Key rotation and future anchoring
+
+This release discards all older Ed25519 keys and rejects v1 receipts. Re-timestamp original files to get v2 receipts; their timestamps will be the new issuance times. Future routine ML-DSA-65 rotation can preserve uncompromised v2 public keys. A compromised key is different: an updated verifier refuses receipts under it, and an old offline verifier needs an authentic update to learn that status. See [Protocol v2](/docs/protocol) and the [key lifecycle procedure](/docs/key-lifecycle).
+
+A public transparency log with independently timestamped batch roots is future work. It is not part of v2, and current receipts do not claim that protection.
 

@@ -17,25 +17,27 @@ export default function Home() {
         <div className="proof-scene" aria-label="Illustration of a file fingerprint becoming a signed receipt">
           <div className="source-file"><span className="file-symbol">↳</span><div>your-file.zip<small>Stays on your device</small></div><span className="local-label">LOCAL</span></div>
           <div className="proof-connector"><span>SHA-256 fingerprint</span><span>↓</span></div>
-          <div className="proof-card"><div className="proof-card-header"><span className="proof-mark">m.</span><span>Timestamp receipt<small>Momento / Ed25519</small></span><span className="signature-mark">✓</span></div><dl><dt>FILE FINGERPRINT</dt><dd>e3b0c44298fc1c14<span>9afbf4c8996fb924…</span></dd><dt>SIGNED AT · UTC</dt><dd>2026-09-25 <span>12:34:56.789</span></dd></dl><div className="proof-card-footer"><span>✓ Independently verifiable</span><span>.json</span></div></div>
+          <div className="proof-card"><div className="proof-card-header"><span className="proof-mark">m.</span><span>Timestamp receipt<small>Momento / ML-DSA-65</small></span><span className="signature-mark">✓</span></div><dl><dt>FILE FINGERPRINT</dt><dd>e3b0c44298fc1c14<span>9afbf4c8996fb924…</span></dd><dt>SIGNED AT · UTC</dt><dd>2026-09-25 <span>12:34:56.789</span></dd></dl><div className="proof-card-footer"><span>✓ Independently verifiable</span><span>.json</span></div></div>
           <p className="illustration-caption">Example receipt · Your next moment is yours.</p>
         </div>
       </section>
       <div className="principles"><span><i>01</i> Hash locally</span><b>→</b><span><i>02</i> Sign the fingerprint</span><b>→</b><span><i>03</i> Keep your proof</span></div>
       <section id="tools" className="tool-section" aria-labelledby="tools-title">
-        <div className="section-heading"><div><p className="eyebrow">THE PLAYGROUND</p><h2 id="tools-title">Small file. Lasting evidence.</h2></div><p>No account. No setup.<br />Just your file and a little cryptography.</p></div>
+        <div className="section-heading"><div><p className="eyebrow">TIMESTAMP TOOLS</p><h2 id="tools-title">A timestamp for your file.</h2></div><p>No account. No setup.<br />Just your file and a little cryptography.</p></div>
         <div className="tool-stage"><TimestampTools /></div>
+        <p className="tool-footnote">Checking Git commits? Use the Check repository tab above. <Link href="/docs/git">How Git verification works →</Link></p>
         <p className="tool-footnote">Time is supplied by the signing server. <Link href="/docs/trust">What does a timestamp prove? ↗</Link></p>
       </section>
       <section className="under-the-hood" aria-labelledby="details-title">
         <div className="section-heading"><div><p className="eyebrow">SIMPLE BY DESIGN</p><h2 id="details-title">Your files. Your workflow.</h2></div><Link className="text-link" href="/docs">Get to know Momento →</Link></div>
         <div className="feature-grid">
           <article className="feature"><span className="feature-icon">#</span><h3>The file stays with you.</h3><p>Your browser calculates a SHA-256 fingerprint. Only that hash reaches the signing service.</p><div className="mini-flow"><span>Your file</span><b>→</b><code>sha256</code><b>→</b><span>Receipt</span></div></article>
-          <article className="feature"><span className="feature-icon">✓</span><h3>Built to be checked.</h3><p>A JSON receipt, an Ed25519 signature, and a public key. Verify locally, without contacting the issuer.</p><Link className="text-link" href="/docs/trust">Understand the trust model ↗</Link></article>
-          <article className="feature api-feature"><span className="feature-icon">⌘</span><h3>Make it part of your process.</h3><p>Timestamp from your app, a script, or a GitHub Actions workflow.</p><pre><code><span>POST</span> /api/v1/stamp{'\n'}{'{ "hash": "<SHA-256>" }'}</code></pre><div className="feature-links"><Link className="text-link" href="/docs/api">API reference ↗</Link><Link className="text-link" href="/docs/github-action">GitHub Action ↗</Link></div></article>
+          <article className="feature"><span className="feature-icon">✓</span><h3>Built to be checked.</h3><p>A JSON receipt, an ML-DSA-65 signature, and a public key. Verify locally, without contacting the issuer.</p><Link className="text-link" href="/docs/trust">Understand the trust model ↗</Link></article>
+          <article className="feature api-feature"><span className="feature-icon">⌘</span><h3>Make it part of your process.</h3><p>Timestamp from your app, a script, or a GitHub Actions workflow.</p><pre><code><span>POST</span> /api/v2/stamp{'\n'}{'{ "hash": "<SHA-256>" }'}</code></pre><div className="feature-links"><Link className="text-link" href="/docs/api">API reference ↗</Link><Link className="text-link" href="/docs/github-action">GitHub Action ↗</Link></div></article>
         </div>
       </section>
-      <footer className="landing-footer"><Link href="/" className="footer-brand">Momento<span>A little proof. A moment in time.</span></Link><div><Link href="/docs">Documentation</Link><a href="https://github.com/MIKTHATGUY/momento">Source ↗</a></div></footer>
+      <div className="proof-summary"><p><strong>What it proves:</strong> the issuer signed this hash and its stated time.</p><p><strong>What it does not prove:</strong> authorship, ownership, original creation time, or independent clock accuracy.</p></div>
+      <footer className="landing-footer"><Link href="/" className="footer-brand">Momento Timestamp<span>A little proof. A moment in time.</span></Link><div><Link href="/docs">Docs</Link><Link href="/verify">Verify</Link><Link href="/repositories">Check repository</Link><Link href="/status">Status</Link><Link href="/security">Security</Link><Link href="/docs/protocol">Protocol v2</Link><a href="https://github.com/MIKTHATGUY/momento">GitHub ↗</a></div></footer>
     </div>
   </HomeLayout>;
 }

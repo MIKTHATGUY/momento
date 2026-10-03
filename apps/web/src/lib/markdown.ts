@@ -1,7 +1,11 @@
-export function getPageMarkdownUrl(page: { slugs: string[] }) {
+import { createGetUrl } from 'fumadocs-core/source';
+
+export const docsContentRoute = '/llms.mdx/docs';
+
+const getContentUrl = createGetUrl(docsContentRoute);
+
+export function getPageMarkdownUrl(page: { slugs: string[]; locale?: string }) {
   const segments = [...page.slugs, 'content.md'];
-  return {
-    segments,
-    url: `/llms.mdx/docs/${segments.map(encodeURIComponent).join('/')}`,
-  };
+
+  return { segments, url: getContentUrl(segments, page.locale) };
 }
