@@ -3,6 +3,8 @@ title: npm packages status (temporary)
 description: Why the npm packages are not published yet and how to use Momento meanwhile.
 ---
 
+import PublishTracker from '../../src/components/publish-tracker';
+
 <Callout title="Temporary notice" type="warn">
 This page and the site banner exist only until the npm packages are published, then both are removed.
 </Callout>
@@ -41,5 +43,7 @@ Verification runs offline. To stamp against another instance, pass its base URL 
 **Rate limits** apply as usual while you do this — see [rate limits](/docs/rate-limits). If you hit `429`, wait out the `Retry-After: 60` interval.
 
 ## What happens next
+
+<PublishTracker />
 
 Once the npm account is recovered, the maintainer will publish the protocol package first and the CLI second, verify `bunx @mikthatguy/momento-timestamp@2.0.0` from outside the repository, and then delete this page and the banner. The checkout commands above keep working unchanged.
