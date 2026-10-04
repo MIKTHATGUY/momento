@@ -39,7 +39,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "@noble/post-quantum": "0.7.0"
+    "@noble/post-quantum": "0.7.1"
   },
   "keywords": [
     "timestamp",
