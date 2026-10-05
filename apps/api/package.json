@@ -14,7 +14,7 @@
     "hono": "^4.9.8",
     "hono-openapi": "^1.3.3",
     "@mikthatguy/momento-protocol": "2.0.0",
-    "@noble/post-quantum": "0.7.0"
+    "@noble/post-quantum": "0.7.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250906.0",
