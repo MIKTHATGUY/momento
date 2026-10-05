@@ -135,12 +135,13 @@ repair round-trip.
 
 1. Store a fine-grained PAT (Contents: read and write on this repository) as
 `MOMENTO_ATTEST_TOKEN` (`gh secret set MOMENTO_ATTEST_TOKEN --repo
-OWNER/REPO`). It is **required** for the merge-time repair job: the ruleset
-below blocks `GITHUB_TOKEN` pushes to `main`, so the repair pushes with this
-token (which carries your admin bypass). Until it is set, merge bot PRs
-locally (`git merge --squash`) instead of using the buttons; the bot-PR
-attestation itself needs no token (it reruns the gate explicitly after
-pushing).
+OWNER/REPO`). It is **required** for both automatic pushes: the ruleset below
+blocks `GITHUB_TOKEN` pushes to `main` (so the repair job pushes with this
+token, which carries your admin bypass), and only a non-`GITHUB_TOKEN` push
+of a fixed PR branch fires a new `synchronize` event — a rerun would stay
+attached to the old head SHA, so without the token the gate can never turn
+green on the fixed head by itself. Until it is set, merge bot PRs locally
+(`git merge --squash`) instead of using the buttons.
 2. Enforce the gate with a branch **ruleset** (repo Settings → Rules →
 Rulesets → New branch ruleset, targeting `refs/heads/main`): require a pull
 request, require the `momento-gate` status check, block

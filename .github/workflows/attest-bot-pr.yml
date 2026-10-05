@@ -45,10 +45,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "${{ secrets.MOMENTO_ATTEST_TOKEN }}" ]; then
-            # Push with a PAT so the fixed branch also retriggers PR checks
-            # through a push event (belt and braces; the rerun step below
-            # covers the GITHUB_TOKEN fallback).
+            # Push with a PAT so the fixed branch retriggers PR checks through
+            # a push event (GITHUB_TOKEN pushes never trigger new runs, and a
+            # rerun would stay attached to the old head SHA).
             git remote set-url origin "https://x-access-token:${{ secrets.MOMENTO_ATTEST_TOKEN }}@github.com/${{ github.repository }}.git"
+            echo "used-pat=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "used-pat=false" >> "$GITHUB_OUTPUT"
           fi
           set +e
           node scripts/attest-unverified.mjs --update-branch "${{ inputs.branch || github.event.pull_request.head.ref }}" 2>&1 | tee attest.log
@@ -56,12 +59,14 @@ jobs:
           if grep -q "already attested" attest.log; then echo "result=noop" >> "$GITHUB_OUTPUT"; else echo "result=pushed" >> "$GITHUB_OUTPUT"; fi
           exit $CODE
       - name: Rerun Momento PR check on fixed branch
-        # GITHUB_TOKEN pushes do not trigger new workflow runs, so explicitly
-        # rerun the gate: it refetches the current PR head and turns green.
+        # Fallback when no PAT is configured (GITHUB_TOKEN pushes do not
+        # trigger new runs). Note this rerun stays attached to the OLD head
+        # SHA, so it is only a signal: configure MOMENTO_ATTEST_TOKEN to make
+        # the gate track the fixed head automatically.
         # The attest script is idempotent, so the rerun cannot cause a loop.
-        # (If no run exists yet for the old head, the pending check run will
+        # (If no run exists yet for the old head, the pending run will
         # fetch the fixed head on its own and nothing needs rerunning.)
-        if: steps.attest.outputs.result == 'pushed' && github.event.pull_request.number != ''
+        if: steps.attest.outputs.result == 'pushed' && steps.attest.outputs.used-pat == 'false' && github.event.pull_request.number != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
