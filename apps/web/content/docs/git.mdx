@@ -87,6 +87,50 @@ Use the Action's `verify-history` mode described in [GitHub Action](/docs/github
 
 The report identifies the checked HEAD and verification time. The badge represents that completed check, not a live guarantee about subsequent remote changes. A negative verification publishes an orange or red badge before failing CI. Checkout, configuration, network or publishing failures can still leave the previous badge visible. Public badges require publicly readable report JSON.
 
+## Bots, web edits and merge buttons
+
+Server-side commits bypass your local hooks: the GitHub web editor, Dependabot,
+`github-actions[bot]`, and the merge/squash/rebase buttons all create commits
+with no `Momento-Parent-Receipt` lines and no proofs. Left alone, they turn the
+badge orange. Three workflows keep it green without weakening verification:
+
+- **Momento PR check** (`.github/workflows/verify-pr.yml`) verifies every PR
+head against existing proofs and publishes nothing. Set it as a required status
+check on `main` so an unattested PR cannot be merged through the UI. It checks
+out trusted base code and fetches the PR head as data, so fork content is never
+executed.
+- **Attest bot PR** (`.github/workflows/attest-bot-pr.yml`) runs on
+`pull_request_target` for `dependabot/**` branches (or manually via
+workflow dispatch with a branch name). It rebases the branch onto the latest
+attested `main`, rewrites each commit with the correct parent links, stamps
+each new hash through the public API, and force-pushes the branch plus
+`refs/momento/proofs`. Re-run it from the Actions tab if a PR falls behind.
+- **Merge-time repair** (the `repair` job in `timestamp.yml`) covers anything
+that still lands unattested on `main`, e.g. a button merge. It amends `HEAD`
+with the correct parent links (all parents of a merge commit), stamps, and
+force-pushes before the `verify` job publishes the badge. Expect a brief
+orange badge and two workflow runs while the repair lands.
+
+The repair job only handles a `HEAD` whose parents already have proofs. A
+merge of a never-attested branch still fails: attest (or squash) the branch
+first. The script exits non-zero with `needs a human` for rebase conflicts,
+merge commits inside a PR range, and unconfirmed parents.
+
+Prefer button-free merges when you can. The fully local alternative for a bot
+branch needs no CI at all:
+
+```sh
+git fetch origin
+git checkout main
+git merge --squash origin/dependabot/bun/typescript-7.0.2
+git commit -m "Bump typescript from 5.9.3 to 7.0.2"
+git push origin main
+```
+
+The hooks attest the single squash commit and the pre-push gate publishes its
+proof. Never squash or merge through the GitHub UI if you want to skip the
+repair round-trip.
+
 ## What the chain establishes
 
 A commit containing an authentic prior receipt can only be formed after that receipt becomes available. Its own receipt provides an upper bound, subject to Momento's clock and signing-key trust. Changing Git's author or committer date does not change these bounds. Neither bound establishes when its source code was written or whether it was human-written.

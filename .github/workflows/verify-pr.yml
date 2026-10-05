@@ -1,0 +1,36 @@
+name: Momento PR check
+# Merge gate: verifies the PR head (including bot branches) against existing
+# proofs without publishing. Set as a required status check on main so only
+# attested commits can be merged via the GitHub UI.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+permissions:
+  contents: read
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      # Check out the trusted BASE code (never the PR), then fetch the PR head
+      # as data. This keeps untrusted PR content out of the executed Action.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+      - run: git fetch --no-tags origin pull/${{ github.event.pull_request.number }}/head:refs/momento/pr-head
+      - uses: ./
+        id: stamp
+        with:
+          mode: verify-history
+          target-ref: refs/momento/pr-head
+          start-commit: ${{ vars.MOMENTO_START_COMMIT }}
+          publish-badge: 'false'
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: momento-pr-${{ github.event.pull_request.number }}
+          path: momento-proof/
+          if-no-files-found: error

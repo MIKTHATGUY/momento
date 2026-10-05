@@ -1,0 +1,52 @@
+name: Attest bot PR
+# Dependabot and other bots commit server-side, bypassing the local Git hooks,
+# so their PR branches carry no Momento receipts. This workflow rebases the bot
+# branch onto the latest attested main, rewrites each commit with the correct
+# Momento-Parent-Receipt links, stamps via the public API, and pushes the
+# proofs + fixed branch back. The Momento PR check then turns green.
+#
+# Runs in the BASE repo context (pull_request_target) with trusted base code;
+# PR files are committed as data and never executed.
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Same-repo branch to attest (e.g. dependabot/bun/foo)
+        required: true
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: attest-pr-${{ github.event.pull_request.number || inputs.branch }}
+  cancel-in-progress: true
+jobs:
+  attest:
+    if: >-
+      inputs.branch != '' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      (github.actor == 'dependabot[bot]' || github.actor == 'github-actions[bot]' ||
+      startsWith(github.event.pull_request.head.ref, 'dependabot/')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Attest unverified commits
+        id: attest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/attest-unverified.mjs --update-branch "${{ inputs.branch || github.event.pull_request.head.ref }}"
+      - name: Explain when human help is needed
+        if: failure() && github.event.pull_request.number != ''
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --body "Momento attestation needs help (rebase conflict, merge commit, or unconfirmed parent). Rebase onto the latest \`main\` and squash locally, or rerun the Attest bot PR workflow. See \`apps/web/content/docs/git.mdx\`." || true
+        env:
+          GH_TOKEN: ${{ github.token }}
