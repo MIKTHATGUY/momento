@@ -43,6 +43,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "${{ secrets.MOMENTO_ATTEST_TOKEN }}" ]; then
+            # Push with a PAT so the fixed branch retriggers PR checks.
+            # GITHUB_TOKEN pushes do not trigger new workflow runs.
+            git remote set-url origin "https://x-access-token:${{ secrets.MOMENTO_ATTEST_TOKEN }}@github.com/${{ github.repository }}.git"
+          else
+            echo "::warning::MOMENTO_ATTEST_TOKEN is not set; falling back to GITHUB_TOKEN, which will not retrigger the Momento PR check."
+          fi
           node scripts/attest-unverified.mjs --update-branch "${{ inputs.branch || github.event.pull_request.head.ref }}"
       - name: Explain when human help is needed
         if: failure() && github.event.pull_request.number != ''

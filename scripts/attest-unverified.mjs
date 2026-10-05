@@ -218,11 +218,30 @@ async function main() {
     console.log(`Stamped ${amended.slice(0, 7)} at ${receipt.payload.issuedAt}`);
   } else {
     // Rewrite each commit onto the attested base with correct links.
+    // Commits that are already correctly linked AND proven are reused as-is,
+    // so a re-run after our own push is a no-op (no attestation loop).
     for (const o of olds) {
       if (parentsOf(o).length > 1) die(3, `Cannot auto-attest merge commit ${o.slice(0, 7)}; squash it locally instead`);
     }
     git(['reset', '--hard', base]);
+    let wantParent = base;
+    let reused = 0;
     for (const o of olds) {
+      if (JSON.stringify(parentsOf(o)) === JSON.stringify([wantParent]) && headAttested(o, PROOFS_REF).ok) {
+        wantParent = o;
+        reused++;
+        continue;
+      }
+      break;
+    }
+    if (reused === olds.length) {
+      git(['reset', '--hard', olds[olds.length - 1]]);
+      console.log('Branch already attested; nothing to do');
+      return;
+    }
+    // Reuse the attested prefix, rewrite the rest in order.
+    git(['reset', '--hard', wantParent]);
+    for (const o of olds.slice(reused)) {
       const author = git(['log', '-1', '--format=%an%x00%ae%x00%aI', o]).split('\x00');
       git(['cherry-pick', '-n', o]);
       let empty = false;
