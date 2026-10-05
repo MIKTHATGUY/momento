@@ -11,7 +11,9 @@ concurrency:
   group: pr-check-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
-  verify:
+  # Unique job name: the bare job name is the merge-gate context, and it must
+  # not collide with the `verify` job in timestamp.yml.
+  momento-gate:
     runs-on: ubuntu-latest
     steps:
       # Check out the trusted BASE code (never the PR), then fetch the PR head

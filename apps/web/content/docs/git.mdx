@@ -142,7 +142,7 @@ OWNER/REPO`): pushes made with it retrigger checks through normal push events
 as well.
 2. Enforce the gate with a branch **ruleset** (repo Settings → Rules →
 Rulesets → New branch ruleset, targeting `refs/heads/main`): require a pull
-request, require the `Momento PR check / verify` status check, block
+request, require the `momento-gate` status check, block
 deletions, bypass repository admins. Do not add push or force-push
 restrictions: your direct pushes and the merge-time repair job (which
 force-pushes `main`) must keep working. Classic branch protection cannot
