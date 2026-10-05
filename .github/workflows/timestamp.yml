@@ -27,6 +27,13 @@ jobs:
       - run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ -n "${{ secrets.MOMENTO_ATTEST_TOKEN }}" ]; then
+            # The merge gate blocks GITHUB_TOKEN pushes to main; push the
+            # repair with a PAT (admin bypass) instead.
+            git remote set-url origin "https://x-access-token:${{ secrets.MOMENTO_ATTEST_TOKEN }}@github.com/${{ github.repository }}.git"
+          else
+            echo "::error::MOMENTO_ATTEST_TOKEN is not set, so the repair cannot push through the merge gate. Merge bot PRs locally (git merge --squash) until it is. See apps/web/content/docs/git.mdx."
+          fi
           node scripts/attest-unverified.mjs --update-branch main --no-rebase
   verify:
     needs: [repair]

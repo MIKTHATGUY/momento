@@ -133,13 +133,14 @@ repair round-trip.
 
 ### Wiring the merge gate
 
-1. No token setup is required for the loop to close: after pushing the fixed
-branch (which by itself would not trigger new runs), Attest bot PR explicitly
-reruns the gate, and the idempotent script guarantees the rerun cannot cause a
-loop. Optionally store a fine-grained PAT (Contents: read and write) as
+1. Store a fine-grained PAT (Contents: read and write on this repository) as
 `MOMENTO_ATTEST_TOKEN` (`gh secret set MOMENTO_ATTEST_TOKEN --repo
-OWNER/REPO`): pushes made with it retrigger checks through normal push events
-as well.
+OWNER/REPO`). It is **required** for the merge-time repair job: the ruleset
+below blocks `GITHUB_TOKEN` pushes to `main`, so the repair pushes with this
+token (which carries your admin bypass). Until it is set, merge bot PRs
+locally (`git merge --squash`) instead of using the buttons; the bot-PR
+attestation itself needs no token (it reruns the gate explicitly after
+pushing).
 2. Enforce the gate with a branch **ruleset** (repo Settings → Rules →
 Rulesets → New branch ruleset, targeting `refs/heads/main`): require a pull
 request, require the `momento-gate` status check, block
