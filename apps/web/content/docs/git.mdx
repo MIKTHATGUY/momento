@@ -133,12 +133,13 @@ repair round-trip.
 
 ### Wiring the merge gate
 
-1. Create a fine-grained personal access token (account Settings → Developer
-settings) with repository access to your repo and **Contents: read and write**,
-then store it: `gh secret set MOMENTO_ATTEST_TOKEN --repo OWNER/REPO`. Attest
-bot PR pushes with this token so the fixed branch retriggers PR checks;
-`GITHUB_TOKEN` pushes never trigger new runs. Without it the workflow still
-attests but you must re-run the PR check manually.
+1. No token setup is required for the loop to close: after pushing the fixed
+branch (which by itself would not trigger new runs), Attest bot PR explicitly
+reruns the gate, and the idempotent script guarantees the rerun cannot cause a
+loop. Optionally store a fine-grained PAT (Contents: read and write) as
+`MOMENTO_ATTEST_TOKEN` (`gh secret set MOMENTO_ATTEST_TOKEN --repo
+OWNER/REPO`): pushes made with it retrigger checks through normal push events
+as well.
 2. Enforce the gate with a branch **ruleset** (repo Settings → Rules →
 Rulesets → New branch ruleset, targeting `refs/heads/main`): require a pull
 request, require the `Momento PR check / verify` status check, block

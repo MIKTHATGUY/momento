@@ -18,7 +18,7 @@
 // 4 lease conflict (branch moved concurrently; retry on the next event).
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -181,6 +181,7 @@ async function main() {
   const base = git(['rev-parse', 'refs/remotes/origin/main']);
   const oldTip = git(['rev-parse', `refs/remotes/origin/${branch}`]);
   console.log(`Base: ${base.slice(0, 7)}  Branch ${branch}: ${oldTip.slice(0, 7)}`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `old-tip=${oldTip}\n`);
 
   if (dryRun) {
     const olds = git(['rev-list', '--reverse', `${base}..${oldTip}`]).split('\n').filter(Boolean);

@@ -19,6 +19,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 concurrency:
   group: attest-pr-${{ github.event.pull_request.number || inputs.branch }}
   cancel-in-progress: true
@@ -44,13 +45,28 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ -n "${{ secrets.MOMENTO_ATTEST_TOKEN }}" ]; then
-            # Push with a PAT so the fixed branch retriggers PR checks.
-            # GITHUB_TOKEN pushes do not trigger new workflow runs.
+            # Push with a PAT so the fixed branch also retriggers PR checks
+            # through a push event (belt and braces; the rerun step below
+            # covers the GITHUB_TOKEN fallback).
             git remote set-url origin "https://x-access-token:${{ secrets.MOMENTO_ATTEST_TOKEN }}@github.com/${{ github.repository }}.git"
-          else
-            echo "::warning::MOMENTO_ATTEST_TOKEN is not set; falling back to GITHUB_TOKEN, which will not retrigger the Momento PR check."
           fi
-          node scripts/attest-unverified.mjs --update-branch "${{ inputs.branch || github.event.pull_request.head.ref }}"
+          set +e
+          node scripts/attest-unverified.mjs --update-branch "${{ inputs.branch || github.event.pull_request.head.ref }}" 2>&1 | tee attest.log
+          CODE=${PIPESTATUS[0]}
+          if grep -q "already attested" attest.log; then echo "result=noop" >> "$GITHUB_OUTPUT"; else echo "result=pushed" >> "$GITHUB_OUTPUT"; fi
+          exit $CODE
+      - name: Rerun Momento PR check on fixed branch
+        # GITHUB_TOKEN pushes do not trigger new workflow runs, so explicitly
+        # rerun the gate: it refetches the current PR head and turns green.
+        # The attest script is idempotent, so the rerun cannot cause a loop.
+        # (If no run exists yet for the old head, the pending check run will
+        # fetch the fixed head on its own and nothing needs rerunning.)
+        if: steps.attest.outputs.result == 'pushed' && github.event.pull_request.number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN_ID=$(gh run list --workflow "Momento PR check" --commit "${{ steps.attest.outputs.old-tip }}" --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          if [ -n "$RUN_ID" ]; then gh run rerun "$RUN_ID"; else echo "No completed gate run for the old head; the pending run will verify the fixed head"; fi
       - name: Explain when human help is needed
         if: failure() && github.event.pull_request.number != ''
         run: |
