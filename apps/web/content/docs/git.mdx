@@ -131,6 +131,22 @@ The hooks attest the single squash commit and the pre-push gate publishes its
 proof. Never squash or merge through the GitHub UI if you want to skip the
 repair round-trip.
 
+### Wiring the merge gate
+
+1. Create a fine-grained personal access token (account Settings → Developer
+settings) with repository access to your repo and **Contents: read and write**,
+then store it: `gh secret set MOMENTO_ATTEST_TOKEN --repo OWNER/REPO`. Attest
+bot PR pushes with this token so the fixed branch retriggers PR checks;
+`GITHUB_TOKEN` pushes never trigger new runs. Without it the workflow still
+attests but you must re-run the PR check manually.
+2. Enforce the gate with a branch **ruleset** (repo Settings → Rules →
+Rulesets → New branch ruleset, targeting `refs/heads/main`): require a pull
+request, require the `Momento PR check / verify` status check, block
+deletions, bypass repository admins. Do not add push or force-push
+restrictions: your direct pushes and the merge-time repair job (which
+force-pushes `main`) must keep working. Classic branch protection cannot
+express this split, so use a ruleset.
+
 ## What the chain establishes
 
 A commit containing an authentic prior receipt can only be formed after that receipt becomes available. Its own receipt provides an upper bound, subject to Momento's clock and signing-key trust. Changing Git's author or committer date does not change these bounds. Neither bound establishes when its source code was written or whether it was human-written.
